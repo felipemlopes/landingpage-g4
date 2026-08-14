@@ -19,19 +19,3 @@ export function initials(name) {
     .join('')
     .toUpperCase();
 }
-
-export function getLeads() {
-  try {
-    return JSON.parse(localStorage.getItem('g4_leads')) || [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveLeads(leads) {
-  localStorage.setItem('g4_leads', JSON.stringify(leads));
-}
-
-export function saveQuestions(questions) {
-  localStorage.setItem('g4_questions', JSON.stringify(questions));
-}

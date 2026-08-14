@@ -3,32 +3,61 @@ import Hero from '../components/Hero';
 import Quiz from '../components/Quiz';
 import ResultForm from '../components/ResultForm';
 import ThankYou from '../components/ThankYou';
+import { leadsApi, reportApi } from '../services/api';
 
 const VIEWS = { HERO: 'hero', QUIZ: 'quiz', FORM: 'form', THANKYOU: 'thankyou' };
 
 export default function Landing() {
-  const [view, setView] = useState(VIEWS.HERO);
-  const [answers, setAnswers] = useState([]);
-  const [score, setScore] = useState(0);
-  const [leadName, setLeadName] = useState('');
+  const [view, setView]           = useState(VIEWS.HERO);
+  const [answers, setAnswers]     = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [score, setScore]         = useState(0);
+  const [leadName, setLeadName]   = useState('');
 
   function handleStart() {
     setView(VIEWS.QUIZ);
     window.scrollTo(0, 0);
   }
 
-  function handleQuizComplete(finalAnswers) {
-    const finalScore = Math.round(finalAnswers.reduce((a, b) => a + b, 0) / finalAnswers.length);
-    setAnswers(finalAnswers);
+  function handleQuizComplete(finalAnswers, qs) {
+    const numericAnswers = finalAnswers.map(Number);
+    const finalScore = Math.round(numericAnswers.reduce((a, b) => a + b, 0) / numericAnswers.length);
+    setAnswers(numericAnswers);
     setScore(finalScore);
+    setQuestions(qs);
     setView(VIEWS.FORM);
     window.scrollTo(0, 0);
   }
 
-  function handleSubmit({ name, phone, email }) {
-    const leads = JSON.parse(localStorage.getItem('g4_leads') || '[]');
-    leads.unshift({ id: Date.now(), name, phone, email, score, answers, date: new Date().toISOString() });
-    localStorage.setItem('g4_leads', JSON.stringify(leads));
+  async function handleSubmit({ name, phone, email }) {
+    const safeScore   = Number.isFinite(score) ? Math.round(Math.min(100, Math.max(0, score))) : 0;
+    const safeAnswers = answers.map(Number).filter(Number.isFinite);
+
+    // Salva o lead
+    try {
+      await leadsApi.submit({ name, phone, email, score: safeScore, answers: safeAnswers });
+    } catch (err) {
+      console.error('Erro ao salvar lead:', err);
+    }
+
+    // Gera PDF com IA e envia pelo WhatsApp (em background, não bloqueia o fluxo)
+    reportApi.generate({
+      name,
+      phone,
+      score: safeScore,
+      answers: safeAnswers,
+      questions: questions.map((q) => ({
+        category: q.category,
+        text: q.text,
+        options: q.options,
+      })),
+    }).then((res) => {
+      if (res?.pdf) {
+        reportApi.download(res.pdf, res.filename || 'diagnostico-g4.pdf');
+      }
+    }).catch((err) => {
+      console.error('Erro ao gerar relatório:', err);
+    });
 
     setLeadName(name.split(' ')[0]);
     setView(VIEWS.THANKYOU);
@@ -36,7 +65,7 @@ export default function Landing() {
   }
 
   if (view === VIEWS.QUIZ) return <Quiz onComplete={handleQuizComplete} />;
-  if (view === VIEWS.FORM) return <ResultForm score={score} answers={answers} onSubmit={handleSubmit} />;
+  if (view === VIEWS.FORM) return <ResultForm score={score} answers={answers} questions={questions} onSubmit={handleSubmit} />;
   if (view === VIEWS.THANKYOU) return <ThankYou name={leadName} />;
   return <Hero onStart={handleStart} />;
 }

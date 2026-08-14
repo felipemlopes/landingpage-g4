@@ -1,24 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
-
-const ADMIN_EMAIL = 'admin@g4business.com';
-const ADMIN_PASSWORD = 'g4admin';
+import { auth } from '../../services/api';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
-  const emailRef = useRef(null);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const emailRef                = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => emailRef.current?.focus(), 80);
     return () => clearTimeout(t);
   }, []);
 
-  function attempt() {
-    if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+  async function attempt() {
+    if (!email.trim() || !password) {
+      setError('Preencha e-mail e senha.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await auth.login(email.trim(), password);
       onLogin();
-    } else {
-      setError(true);
+    } catch (e) {
+      setError(e.message || 'E-mail ou senha incorretos.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -31,31 +39,16 @@ export default function Login({ onLogin }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', position: 'relative', overflow: 'hidden' }}>
       <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          background: 'linear-gradient(135deg,#1D1C3A 0%,#131930 100%)',
-          padding: '60px',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          borderRight: '1px solid rgba(160,138,78,.15)',
-          position: 'relative',
-          overflow: 'hidden',
-          color: '#fff',
-        }}
         className="admin-login-left"
+        style={{
+          display: 'flex', flex: 1,
+          background: 'linear-gradient(135deg,#1D1C3A 0%,#131930 100%)',
+          padding: '60px', flexDirection: 'column', justifyContent: 'space-between',
+          borderRight: '1px solid rgba(160,138,78,.15)',
+          position: 'relative', overflow: 'hidden', color: '#fff',
+        }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            top: '-100px',
-            right: '-100px',
-            width: '400px',
-            height: '400px',
-            background: 'radial-gradient(ellipse,rgba(160,138,78,.12) 0%,transparent 65%)',
-            pointerEvents: 'none',
-          }}
-        />
+        <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '400px', height: '400px', background: 'radial-gradient(ellipse,rgba(160,138,78,.12) 0%,transparent 65%)', pointerEvents: 'none' }} />
         <div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px' }}>
             <span style={{ color: '#A08A4E' }}>G4</span> Admin
@@ -66,55 +59,20 @@ export default function Login({ onLogin }) {
             O que você gerencia aqui
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  background: 'rgba(160,138,78,.1)',
-                  border: '1px solid rgba(160,138,78,.25)',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A08A4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
+            {[
+              { icon: <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>, title: 'Gestão de leads', desc: 'Visualize, exporte e gerencie contatos' },
+              { icon: <><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>, title: 'Diagnóstico interativo', desc: 'Edite perguntas e pontuações' },
+            ].map((item) => (
+              <div key={item.title} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                <div style={{ width: '36px', height: '36px', background: 'rgba(160,138,78,.1)', border: '1px solid rgba(160,138,78,.25)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A08A4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{item.icon}</svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 600 }}>{item.title}</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.4)', marginTop: '2px' }}>{item.desc}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 600 }}>Gestão de leads</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.4)', marginTop: '2px' }}>Visualize, exporte e gerencie contatos</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  background: 'rgba(160,138,78,.1)',
-                  border: '1px solid rgba(160,138,78,.25)',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A08A4E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 600 }}>Diagnóstico interativo</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.4)', marginTop: '2px' }}>Edite perguntas e pontuações</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.2)' }}>G4 Business · Diagnóstico Comercial</div>
@@ -130,52 +88,26 @@ export default function Login({ onLogin }) {
           </div>
           <div className="fu fu-1" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: '8px' }}>
-                E-mail
-              </label>
-              <input
-                ref={emailRef}
-                type="email"
-                placeholder="admin@g4business.com"
-                className="field"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError(false);
-                }}
-                onKeyDown={handleKeyDown}
-                style={errorBorder}
-              />
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: '8px' }}>E-mail</label>
+              <input ref={emailRef} type="email" placeholder="admin@admin.com" className="field" value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                onKeyDown={handleKeyDown} style={errorBorder} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: '8px' }}>
-                Senha
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="field"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError(false);
-                }}
-                onKeyDown={handleKeyDown}
-                style={errorBorder}
-              />
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, letterSpacing: '.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: '8px' }}>Senha</label>
+              <input type="password" placeholder="••••••••" className="field" value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={handleKeyDown} style={errorBorder} />
             </div>
             {error && (
               <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '7px', padding: '10px 14px', fontSize: '13px', color: '#dc2626' }}>
-                E-mail ou senha incorretos.
+                {error}
               </div>
             )}
-            <button type="button" onClick={attempt} className="btn btn-primary" style={{ width: '100%', marginTop: '4px', fontSize: '15px', padding: '14px' }}>
-              Entrar
+            <button type="button" onClick={attempt} disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '4px', fontSize: '15px', padding: '14px', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </div>
-          <p className="fu fu-2" style={{ marginTop: '20px', fontSize: '11px', color: 'rgba(255,255,255,.18)', textAlign: 'center' }}>
-            admin@g4business.com · g4admin
-          </p>
         </div>
       </div>
     </div>

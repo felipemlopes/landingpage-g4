@@ -63,24 +63,63 @@
 .stat-card.purple::before { background: var(--purple); }
 .stat-card.yellow::before { background: var(--yellow); }
 
+/* ── Layout ── */
 .layout { display: flex; flex-direction: column; min-height: 100vh; }
 .sidebar { width: 100%; background: var(--sidebar-bg); border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; }
-.sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sidebar-border); }
+.sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; }
 .sidebar-nav-wrap { display: flex; gap: 4px; padding: 10px 12px; }
 .sidebar-nav-wrap .nav-item { flex: 1; justify-content: center; font-size: 13px; }
 .sidebar-nav-wrap .nav-item svg { display: none; }
-.sidebar-footer-wrap { display: none; }
-.main-content { flex: 1; padding: 20px 16px 60px; background: var(--page-bg); }
 
+/* Footer oculto no mobile */
+.sidebar-footer-wrap { display: none; }
+
+/* Ações mobile (perfil + sair) visíveis só no mobile */
+.mobile-actions { display: flex; }
+.main-content { flex: 1; padding: 20px 16px 60px; background: var(--page-bg); overflow-y: auto; }
+
+/* ── Sidebar profile card ── */
+.sidebar-profile { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px 12px; cursor: pointer; text-align: left; transition: all .15s; }
+.sidebar-profile:hover { background: rgba(160,138,78,.12); border-color: rgba(160,138,78,.25); }
+.sidebar-profile.active { background: rgba(160,138,78,.15); border-color: rgba(160,138,78,.3); }
+.sidebar-avatar { width: 32px; height: 32px; background: rgba(160,138,78,.2); border: 1px solid rgba(160,138,78,.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #A08A4E; flex-shrink: 0; }
+.sidebar-profile-info { flex: 1; min-width: 0; }
+.sidebar-profile-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-profile-email { font-size: 11px; color: rgba(255,255,255,.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+/* ── Desktop ── */
 @media (min-width: 768px) {
-  .layout { flex-direction: row; }
-  .sidebar { width: 230px; border-bottom: none; border-right: 1px solid var(--sidebar-border); display: flex; flex-direction: column; min-height: 100vh; }
+  .layout { flex-direction: row; height: 100vh; overflow: hidden; }
+  .sidebar {
+    width: 230px;
+    border-bottom: none;
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow: hidden; /* sidebar não rola */
+  }
   .sidebar-brand { padding: 28px 22px; }
-  .sidebar-nav-wrap { flex-direction: column; padding: 16px 12px; flex: 1; }
+  .sidebar-nav-wrap { flex-direction: column; padding: 16px 12px; flex: 1; overflow: hidden; }
   .sidebar-nav-wrap .nav-item { flex: none; justify-content: flex-start; font-size: 14px; }
   .sidebar-nav-wrap .nav-item svg { display: block; }
-  .sidebar-footer-wrap { display: block; padding: 16px 12px; border-top: 1px solid var(--sidebar-border); }
-  .main-content { padding: 32px 36px; background: var(--page-bg); }
+  .sidebar-footer-wrap {
+    display: block;
+    padding: 12px 12px 16px;
+    border-top: 1px solid var(--sidebar-border);
+    flex-shrink: 0;
+  }
+  /* Restaura estilos do desktop que o mobile sobrescreveu */
+  .sidebar-footer-wrap .sidebar-profile { flex: none; justify-content: flex-start; padding: 10px 12px; }
+  .sidebar-footer-wrap .sidebar-profile .sidebar-profile-info { display: block; }
+  .sidebar-footer-wrap .sidebar-profile > svg:last-child { display: block; }
+  .sidebar-footer-wrap .nav-item { flex: none; justify-content: flex-start; font-size: 14px; }
+  .sidebar-footer-wrap .nav-item span { display: inline; }
+  /* Esconde ações mobile no desktop */
+  .mobile-actions { display: none !important; }
+  .main-content { flex: 1; padding: 32px 36px; background: var(--page-bg); overflow-y: auto; height: 100vh; }
   .mobile-logout { display: none !important; }
 }
 

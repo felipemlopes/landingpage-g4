@@ -1,45 +1,101 @@
 import { useEffect, useState } from 'react';
-import { questions } from '../data/quizData';
+import { questionsApi } from '../services/api';
 
 export default function Quiz({ onComplete }) {
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState([]);
-  const [visible, setVisible] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [idx, setIdx]             = useState(0);
+  const [answers, setAnswers]     = useState([]);
+  const [visible, setVisible]     = useState(false);
+  const [selected, setSelected]   = useState(null);
 
-  const q = questions[idx];
+  // Busca perguntas da API ao montar
+  useEffect(() => {
+    questionsApi.getAll()
+      .then((data) => {
+        setQuestions(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Erro ao carregar perguntas. Tente novamente.');
+        setLoading(false);
+      });
+  }, []);
+
+  const total = questions.length;
+  const q     = questions[idx];
+
   const scorePreview = answers.length
     ? Math.round(answers.reduce((a, b) => a + b, 0) / answers.length)
     : 0;
-  const progress = Math.max(11, Math.round((idx / 9) * 100));
+  const progress = total > 0 ? Math.max(11, Math.round((idx / total) * 100)) : 11;
 
   useEffect(() => {
+    if (!q) return;
     setVisible(false);
     const t = setTimeout(() => setVisible(true), 160);
     return () => clearTimeout(t);
-  }, [idx]);
+  }, [idx, q]);
 
   function selectOption(i, points) {
     if (selected !== null) return;
     setSelected(i);
     setTimeout(() => {
-      const newAnswers = [...answers, points];
-      if (idx < 8) {
+      const newAnswers = [...answers, Number(points)];
+      if (idx < total - 1) {
         setAnswers(newAnswers);
         setIdx(idx + 1);
         setSelected(null);
       } else {
-        onComplete(newAnswers);
+        onComplete(newAnswers, questions);
       }
     }, 380);
   }
 
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <section style={{ display: 'flex', minHeight: '100dvh', background: '#0D0D17', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '36px', height: '36px', border: '3px solid rgba(255,255,255,.1)',
+            borderTopColor: '#A08A4E', borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite', margin: '0 auto 16px',
+          }} />
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.4)' }}>Carregando perguntas...</p>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Erro ──────────────────────────────────────────────────────────────────
+  if (error || total === 0) {
+    return (
+      <section style={{ display: 'flex', minHeight: '100dvh', background: '#0D0D17', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ textAlign: 'center', maxWidth: '360px' }}>
+          <p style={{ fontSize: '15px', color: '#ef4444', marginBottom: '16px' }}>
+            {error || 'Nenhuma pergunta disponível no momento.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{ background: '#A08A4E', color: '#0D0D17', border: 'none', borderRadius: '8px', padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Quiz ──────────────────────────────────────────────────────────────────
   return (
     <section id="quiz-section" style={{ display: 'flex', minHeight: '100dvh', background: '#0D0D17', flexDirection: 'column' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#0D0D17', borderBottom: '1px solid rgba(255,255,255,.06)', padding: '14px 24px' }}>
         <div style={{ maxWidth: '560px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '14px' }}>
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,.35)', whiteSpace: 'nowrap', minWidth: '32px' }}>
-            <span style={{ color: '#A08A4E' }}>{idx + 1}</span>/9
+            <span style={{ color: '#A08A4E' }}>{idx + 1}</span>/{total}
           </span>
           <div style={{ flex: 1, background: 'rgba(255,255,255,.08)', borderRadius: '100px', height: '3px', overflow: 'hidden' }}>
             <div
@@ -74,7 +130,7 @@ export default function Quiz({ onComplete }) {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {q.options.map((opt, i) => {
-              const letter = String.fromCharCode(65 + i);
+              const letter    = String.fromCharCode(65 + i);
               const isSelected = selected === i;
               return (
                 <button
@@ -129,6 +185,10 @@ export default function Quiz({ onComplete }) {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </section>
   );
 }
