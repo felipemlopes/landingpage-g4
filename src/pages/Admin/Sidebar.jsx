@@ -1,3 +1,5 @@
+import { APP_SHORT_NAME } from '../../config/brand';
+
 export default function Sidebar({ tab, onTabChange, onLogout, user }) {
   const initials = (name) =>
     (name || 'A').split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -7,7 +9,7 @@ export default function Sidebar({ tab, onTabChange, onLogout, user }) {
       {/* Brand */}
       <div className="sidebar-brand">
         <div style={{ fontSize: '19px', fontWeight: 800, letterSpacing: '-.3px', color: '#fff' }}>
-          <span style={{ color: '#A08A4E' }}>G4</span> Admin
+          <span style={{ color: '#A08A4E' }}>{APP_SHORT_NAME}</span> Admin
         </div>
 
         {/* Ações mobile: Perfil + Sair */}
@@ -64,6 +66,14 @@ export default function Sidebar({ tab, onTabChange, onLogout, user }) {
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
           Perguntas
+        </button>
+        <button type="button" className={`nav-item${tab === 'integracoes' ? ' active' : ''}`} onClick={() => onTabChange('integracoes')}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            <path d="M17 3v5h-5" />
+            <path d="M21 3l-9 9" />
+          </svg>
+          Integrações
         </button>
       </div>
 

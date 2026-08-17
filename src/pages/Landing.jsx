@@ -34,14 +34,17 @@ export default function Landing() {
     const safeAnswers = answers.map(Number).filter(Number.isFinite);
 
     // Salva o lead
+    let leadId = null;
     try {
-      await leadsApi.submit({ name, phone, email, score: safeScore, answers: safeAnswers });
+      const lead = await leadsApi.submit({ name, phone, email, score: safeScore, answers: safeAnswers });
+      leadId = lead?.id ?? null;
     } catch (err) {
       console.error('Erro ao salvar lead:', err);
     }
 
     // Gera PDF com IA e envia pelo WhatsApp (em background, não bloqueia o fluxo)
     reportApi.generate({
+      lead_id: leadId,
       name,
       phone,
       score: safeScore,

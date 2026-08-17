@@ -35,10 +35,25 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'openai' => [
+        'key'   => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+    ],
+
+    'ai' => [
+        // openai | gemini
+        'provider' => env('AI_PROVIDER', 'openai'),
+    ],
+
+    // Evolution API — só a URL e a API Key ficam no .env (credenciais de infra).
+    // O provider ativo (evolution | official) e os dados da API oficial (Meta)
+    // são configurados pelo admin na tela de Integrações e ficam em
+    // App\Models\WhatsappSetting. O nome da instância da Evolution é
+    // gerenciado pela aplicação (não é editável pelo admin).
     'evolution' => [
-        'url'      => env('EVOLUTION_API_URL'),
-        'key'      => env('EVOLUTION_API_KEY'),
-        'instance' => env('EVOLUTION_INSTANCE'),
+        'url'              => env('EVOLUTION_API_URL'),
+        'key'              => env('EVOLUTION_API_KEY'),
+        'default_instance' => env('EVOLUTION_DEFAULT_INSTANCE', 'g4'),
     ],
 
 ];

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { adminQuestionsApi } from '../../services/api';
 import QuestionModal from './QuestionModal';
+import ConfirmModal from './ConfirmModal';
 
 export default function QuestionsPanel() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [editingQ, setEditingQ]   = useState(undefined); // undefined=fechado, null=novo, object=editar
+  const [deletingId, setDeletingId] = useState(null); // id da pergunta pendente de confirmação
 
   useEffect(() => {
     fetchQuestions();
@@ -51,22 +53,13 @@ export default function QuestionsPanel() {
   }
 
   async function deleteQuestion(id) {
-    if (!confirm('Excluir esta pergunta?')) return;
     try {
       await adminQuestionsApi.delete(id);
       setQuestions((prev) => prev.filter((q) => q.id !== id));
     } catch {
       alert('Erro ao excluir pergunta.');
-    }
-  }
-
-  async function resetDefaults() {
-    if (!confirm('Restaurar todas as perguntas para o padrão? Isso apaga as perguntas atuais.')) return;
-    try {
-      await adminQuestionsApi.resetDefaults();
-      await fetchQuestions();
-    } catch {
-      alert('Erro ao restaurar padrão.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -111,7 +104,6 @@ export default function QuestionsPanel() {
             </svg>
             Nova pergunta
           </button>
-          <button type="button" className="btn btn-danger" onClick={resetDefaults}>Restaurar padrão</button>
         </div>
       </div>
 
@@ -140,7 +132,7 @@ export default function QuestionsPanel() {
                 </button>
               )}
               <button type="button" className="btn btn-accent" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setEditingQ(q)}>Editar</button>
-              <button type="button" className="btn btn-danger" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => deleteQuestion(q.id)}>Excluir</button>
+              <button type="button" className="btn btn-danger" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setDeletingId(q.id)}>Excluir</button>
             </div>
           </div>
         ))}
@@ -157,6 +149,16 @@ export default function QuestionsPanel() {
           question={editingQ}
           onSave={handleModalSave}
           onClose={() => setEditingQ(undefined)}
+        />
+      )}
+
+      {deletingId !== null && (
+        <ConfirmModal
+          title="Excluir pergunta?"
+          message="Essa ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          onConfirm={() => deleteQuestion(deletingId)}
+          onClose={() => setDeletingId(null)}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,8 +22,11 @@ Route::get('/questions', [QuestionController::class, 'index']);
 // Submissão de lead após o quiz
 Route::post('/leads', [LeadController::class, 'store']);
 
-// Geração de relatório PDF + envio WhatsApp (público)
+// Geração de relatório PDF + envio WhatsApp — enfileira e devolve report_id (público)
 Route::post('/report', [ReportController::class, 'generate']);
+
+// Polling do status/resultado do relatório enfileirado (público, resolvido por token opaco)
+Route::get('/report/{report:token}', [ReportController::class, 'show']);
 
 // Autenticação admin
 Route::prefix('auth')->group(function () {
@@ -38,11 +42,18 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     // Perfil
     Route::put('/profile', [ProfileController::class, 'update']);
 
+    // Integrações — WhatsApp
+    Route::get('/whatsapp/status',   [WhatsAppController::class, 'status']);
+    Route::post('/whatsapp/connect', [WhatsAppController::class, 'connect']);
+    Route::get('/whatsapp/settings', [WhatsAppController::class, 'settings']);
+    Route::put('/whatsapp/settings', [WhatsAppController::class, 'updateSettings']);
+
     // Leads
-    Route::get('/leads',            [LeadController::class, 'index']);
-    Route::delete('/leads/all',     [LeadController::class, 'destroyAll']);
-    Route::get('/leads/export/csv', [LeadController::class, 'exportCsv']);
-    Route::delete('/leads/{lead}',  [LeadController::class, 'destroy']);
+    Route::get('/leads',                    [LeadController::class, 'index']);
+    Route::delete('/leads/all',             [LeadController::class, 'destroyAll']);
+    Route::get('/leads/export/xlsx',        [LeadController::class, 'exportXlsx']);
+    Route::post('/leads/{lead}/resend-report', [ReportController::class, 'resend']);
+    Route::delete('/leads/{lead}',          [LeadController::class, 'destroy']);
 
     // Perguntas (gestão completa)
     Route::get('/questions',                  [QuestionController::class, 'adminIndex']);

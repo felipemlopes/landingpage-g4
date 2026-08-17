@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { auth } from '../../services/api';
+import { APP_NAME, APP_SHORT_NAME } from '../../config/brand';
 
 export default function Login({ onLogin }) {
   const [email, setEmail]       = useState('');
@@ -51,7 +52,7 @@ export default function Login({ onLogin }) {
         <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '400px', height: '400px', background: 'radial-gradient(ellipse,rgba(160,138,78,.12) 0%,transparent 65%)', pointerEvents: 'none' }} />
         <div>
           <div style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-.5px' }}>
-            <span style={{ color: '#A08A4E' }}>G4</span> Admin
+            <span style={{ color: '#A08A4E' }}>{APP_SHORT_NAME}</span> Admin
           </div>
         </div>
         <div>
@@ -75,14 +76,14 @@ export default function Login({ onLogin }) {
             ))}
           </div>
         </div>
-        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.2)' }}>G4 Business · Diagnóstico Comercial</div>
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.2)' }}>{APP_NAME} · Diagnóstico Comercial</div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', background: '#131930', color: '#fff' }}>
         <div style={{ maxWidth: '360px', width: '100%' }}>
           <div className="fu" style={{ marginBottom: '36px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-.5px', marginBottom: '6px' }}>
-              <span style={{ color: '#A08A4E' }}>G4</span> Admin
+              <span style={{ color: '#A08A4E' }}>{APP_SHORT_NAME}</span> Admin
             </div>
             <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.4)' }}>Acesse o painel de gestão</p>
           </div>

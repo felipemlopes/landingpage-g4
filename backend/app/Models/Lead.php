@@ -18,7 +18,8 @@ class Lead extends Model
     ];
 
     protected $casts = [
-        'answers' => 'array',
-        'score'   => 'integer',
+        'answers'             => 'array',
+        'score'               => 'integer',
+        'report_generated_at' => 'datetime',
     ];
 }

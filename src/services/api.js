@@ -47,9 +47,9 @@ async function request(path, options = {}) {
   // Sem corpo (ex: 204)
   if (res.status === 204) return null;
 
-  // Arquivo (CSV)
+  // Arquivo (XLSX)
   const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('text/csv')) {
+  if (contentType.includes('spreadsheetml') || contentType.includes('octet-stream')) {
     return res.blob();
   }
 
@@ -119,30 +119,54 @@ export const leadsApi = {
     return request('/admin/leads/all', { method: 'DELETE' });
   },
 
-  /** Download CSV (admin) */
-  async exportCsv() {
-    const blob = await request('/admin/leads/export/csv');
+  /** Download XLSX (admin) */
+  async exportXlsx() {
+    const blob = await request('/admin/leads/export/xlsx');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `leads-g4-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `leads-g4-${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
+  },
+
+  /** Reenvia o PDF já gerado pelo WhatsApp, sem chamar a IA de novo (admin) */
+  async resendReport(id) {
+    return request(`/admin/leads/${id}/resend-report`, { method: 'POST' });
   },
 };
 
 // ── Relatório PDF ─────────────────────────────────────────────────────────────
 
+const REPORT_POLL_INTERVAL_MS = 2000;
+const REPORT_POLL_MAX_ATTEMPTS = 40; // ~80s
+
+/** Faz polling de GET /report/:id até o status virar "done" ou "failed" */
+async function pollReport(reportId) {
+  for (let attempt = 0; attempt < REPORT_POLL_MAX_ATTEMPTS; attempt++) {
+    const data = await request(`/report/${reportId}`);
+
+    if (data.status === 'done') return data;
+    if (data.status === 'failed') throw new Error(data.error || 'Falha ao gerar o diagnóstico.');
+
+    await new Promise((resolve) => setTimeout(resolve, REPORT_POLL_INTERVAL_MS));
+  }
+
+  throw new Error('Tempo esgotado aguardando o diagnóstico.');
+}
+
 export const reportApi = {
   /**
-   * Gera o PDF via IA e envia pelo WhatsApp.
-   * Retorna base64 do PDF para download no browser.
+   * Enfileira a geração do PDF via IA + envio pelo WhatsApp e aguarda a conclusão
+   * (polling interno). Resolve com { pdf, filename, whatsapp_sent } — mesmo formato
+   * de antes da fila assíncrona, para não exigir mudanças em quem consome esta função.
    */
   async generate(payload) {
-    return request('/report', {
+    const { report_id } = await request('/report', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    return pollReport(report_id);
   },
 
   /** Faz download do PDF a partir do base64 retornado pela API */
@@ -157,6 +181,33 @@ export const reportApi = {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  },
+};
+
+// ── WhatsApp (admin) ──────────────────────────────────────────────────────────
+
+export const whatsappApi = {
+  /** Status de conexão do provider ativo (evolution | official) */
+  async status() {
+    return request('/admin/whatsapp/status');
+  },
+
+  /** Inicia a conexão (QR na Evolution) ou revalida credenciais (API oficial) */
+  async connect() {
+    return request('/admin/whatsapp/connect', { method: 'POST' });
+  },
+
+  /** Configuração atual: provider ativo + credenciais da API oficial (token mascarado) */
+  async getSettings() {
+    return request('/admin/whatsapp/settings');
+  },
+
+  /** Salva o provider ativo e/ou as credenciais da API oficial */
+  async saveSettings(payload) {
+    return request('/admin/whatsapp/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
   },
 };
 

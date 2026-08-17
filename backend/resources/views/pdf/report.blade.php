@@ -15,7 +15,9 @@
 
   /* ── Cabeçalho ── */
   .header {
-    background: linear-gradient(135deg, #131930 0%, #1D1C3A 100%);
+    /* cor sólida garante contraste mesmo se o gradiente não renderizar no dompdf */
+    background-color: #131930;
+    background-image: linear-gradient(135deg, #131930 0%, #1D1C3A 100%);
     padding: 32px 40px 28px;
     color: #fff;
   }
@@ -48,10 +50,10 @@
     border-radius: 50%;
     background: rgba(160,138,78,.15);
     border: 2px solid #A08A4E;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    /* dompdf não centraliza bem flex dentro de um círculo — centraliza com
+       padding calculado + text-align em vez de flex. */
+    text-align: center;
+    padding-top: 15px;
     flex-shrink: 0;
   }
   .score-number {

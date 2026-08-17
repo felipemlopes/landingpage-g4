@@ -1,0 +1,6 @@
+# TODO: confirmar domínio de produção (ver SITE_URL em index.html e sitemap.xml)
+User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: https://SITE_URL/sitemap.xml

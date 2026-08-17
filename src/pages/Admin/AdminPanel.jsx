@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import LeadsPanel from './LeadsPanel';
 import QuestionsPanel from './QuestionsPanel';
 import ProfilePanel from './ProfilePanel';
+import IntegracoesPanel from './IntegracoesPanel';
 import { auth } from '../../services/api';
 
 export default function AdminPanel() {
@@ -59,8 +60,9 @@ export default function AdminPanel() {
   }
 
   function renderPanel() {
-    if (tab === 'perguntas') return <QuestionsPanel />;
-    if (tab === 'perfil')    return <ProfilePanel user={user} onUpdate={setUser} />;
+    if (tab === 'perguntas')    return <QuestionsPanel />;
+    if (tab === 'integracoes')  return <IntegracoesPanel />;
+    if (tab === 'perfil')       return <ProfilePanel user={user} onUpdate={setUser} />;
     return <LeadsPanel />;
   }
 

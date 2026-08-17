@@ -2,10 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { leadsApi } from '../../services/api';
 import { initials, scoreColor, scoreLabel } from './adminUtils';
 
+const WHATSAPP_BADGE = {
+  sent:     { label: 'Enviado',     bg: 'rgba(22,163,74,.1)',   color: '#16a34a' },
+  failed:   { label: 'Falhou',      bg: 'rgba(220,38,38,.1)',   color: '#dc2626' },
+  disabled: { label: 'Desabilitado', bg: 'rgba(107,114,128,.1)', color: '#6b7280' },
+  pending:  { label: 'Pendente',    bg: 'rgba(217,119,6,.1)',   color: '#d97706' },
+};
+
+function whatsappBadge(status) {
+  return WHATSAPP_BADGE[status] || WHATSAPP_BADGE.pending;
+}
+
 export default function LeadsPanel() {
-  const [leads, setLeads]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [leads, setLeads]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [resendingId, setResendingId] = useState(null);
 
   useEffect(() => {
     fetchLeads();
@@ -60,11 +72,28 @@ export default function LeadsPanel() {
     }
   }
 
-  async function exportCsv() {
+  async function exportXlsx() {
     try {
-      await leadsApi.exportCsv();
+      await leadsApi.exportXlsx();
     } catch {
-      alert('Erro ao exportar CSV.');
+      alert('Erro ao exportar XLSX.');
+    }
+  }
+
+  async function resendReport(id) {
+    setResendingId(id);
+    try {
+      const res = await leadsApi.resendReport(id);
+      setLeads((prev) => prev.map((l) => (
+        l.id === id ? { ...l, whatsapp_status: res.whatsapp_status, whatsapp_error: res.whatsapp_error } : l
+      )));
+      if (res.whatsapp_status !== 'sent') {
+        alert(res.whatsapp_error || 'Não foi possível reenviar o diagnóstico.');
+      }
+    } catch (err) {
+      alert(err.message || 'Erro ao reenviar diagnóstico.');
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -85,11 +114,11 @@ export default function LeadsPanel() {
           </p>
         </div>
         <div className="page-actions">
-          <button type="button" onClick={exportCsv} className="btn btn-accent">
+          <button type="button" onClick={exportXlsx} className="btn btn-accent">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Exportar CSV
+            Exportar XLSX
           </button>
           <button type="button" onClick={clearAll} className="btn btn-danger">Limpar tudo</button>
         </div>
@@ -118,15 +147,19 @@ export default function LeadsPanel() {
               <tr>
                 <th>Lead</th><th>WhatsApp</th><th>E-mail</th>
                 <th style={{ textAlign: 'center' }}>Score</th><th>Data</th>
+                <th style={{ textAlign: 'center' }}>PDF</th>
+                <th style={{ textAlign: 'center' }}>Envio WhatsApp</th>
                 <th style={{ width: '36px' }}></th>
               </tr>
             </thead>
             <tbody>
               {leads.map((l) => {
-                const d   = l.created_at ? new Date(l.created_at) : null;
-                const ds  = d ? d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
-                const sc  = l.score || 0;
-                const col = scoreColor(sc);
+                const d    = l.created_at ? new Date(l.created_at) : null;
+                const ds   = d ? d.toLocaleDateString('pt-BR') + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+                const sc   = l.score || 0;
+                const col  = scoreColor(sc);
+                const wa   = whatsappBadge(l.whatsapp_status);
+                const resending = resendingId === l.id;
                 return (
                   <tr key={l.id}>
                     <td>
@@ -143,6 +176,28 @@ export default function LeadsPanel() {
                       <span className="badge" style={{ background: col + '14', border: `1px solid ${col}33`, color: col }}>{sc} pts</span>
                     </td>
                     <td style={{ color: 'rgba(13,13,23,.35)', fontSize: '12px' }}>{ds}</td>
+                    <td style={{ textAlign: 'center', fontSize: '12px', color: l.report_generated_at ? '#16a34a' : 'rgba(13,13,23,.3)' }}>
+                      {l.report_generated_at ? 'Gerado' : '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <span className="badge" style={{ background: wa.bg, border: `1px solid ${wa.color}33`, color: wa.color }} title={l.whatsapp_error || ''}>
+                          {wa.label}
+                        </span>
+                        {l.whatsapp_status === 'failed' && (
+                          <button
+                            type="button"
+                            onClick={() => resendReport(l.id)}
+                            disabled={resending}
+                            title="Reenviar diagnóstico pelo WhatsApp"
+                            className="btn btn-ghost"
+                            style={{ fontSize: '11px', padding: '4px 10px', opacity: resending ? 0.6 : 1 }}
+                          >
+                            {resending ? '...' : 'Reenviar'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <button type="button" className="btn-icon del" title="Remover" onClick={() => deleteLead(l.id)}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -7,7 +7,49 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <title>Diagnóstico de Maturidade Comercial | G4 Business</title>
+
+    <!-- TODO: trocar SITE_URL pelo domínio de produção real antes do deploy -->
+    <title>Diagnóstico de Maturidade Comercial | %VITE_APP_NAME%</title>
+    <meta name="description" content="Descubra em 2 minutos o nível de maturidade comercial da sua empresa. 9 perguntas, resultado imediato e um plano de ação personalizado enviado no seu WhatsApp." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://SITE_URL/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="%VITE_APP_NAME%" />
+    <meta property="og:url" content="https://SITE_URL/" />
+    <meta property="og:title" content="Diagnóstico de Maturidade Comercial | %VITE_APP_NAME%" />
+    <meta property="og:description" content="Descubra em 2 minutos o nível de maturidade comercial da sua empresa. 9 perguntas, resultado imediato e um plano de ação personalizado enviado no seu WhatsApp." />
+    <meta property="og:image" content="https://SITE_URL/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Diagnóstico de Maturidade Comercial | %VITE_APP_NAME%" />
+    <meta name="twitter:description" content="Descubra em 2 minutos o nível de maturidade comercial da sua empresa." />
+    <meta name="twitter:image" content="https://SITE_URL/og-image.png" />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "%VITE_APP_NAME%",
+        "url": "https://SITE_URL/",
+        "logo": "https://SITE_URL/favicon.svg",
+        "description": "Diagnóstico gratuito de maturidade comercial para empresas."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "%VITE_APP_NAME% - Diagnóstico de Maturidade Comercial",
+        "url": "https://SITE_URL/"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

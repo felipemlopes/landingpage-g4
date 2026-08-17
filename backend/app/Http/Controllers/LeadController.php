@@ -6,6 +6,9 @@ use App\Models\Lead;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LeadController extends Controller
 {
@@ -58,31 +61,47 @@ class LeadController extends Controller
     }
 
     /**
-     * Exporta leads como CSV (autenticado — admin).
+     * Exporta leads como XLSX (autenticado — admin).
      */
-    public function exportCsv(): Response
+    public function exportXlsx(): BinaryFileResponse
     {
         $leads = Lead::orderByDesc('created_at')->get();
 
-        $rows   = [];
-        $rows[] = implode(',', ['Nome', 'WhatsApp', 'Email', 'Score', 'Nível', 'Data']);
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Leads');
 
+        $headers = ['Nome', 'WhatsApp', 'Email', 'Score', 'Nível', 'Data'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+
+        $row = 2;
         foreach ($leads as $lead) {
-            $level = $this->scoreLabel($lead->score);
-            $date  = $lead->created_at?->format('d/m/Y H:i') ?? '';
-            $rows[] = implode(',', array_map(
-                fn ($v) => '"' . str_replace('"', '""', (string) $v) . '"',
-                [$lead->name, $lead->phone, $lead->email ?? '', $lead->score, $level, $date]
-            ));
+            $sheet->fromArray([
+                $lead->name,
+                $lead->phone,
+                $lead->email ?? '',
+                $lead->score,
+                $this->scoreLabel($lead->score),
+                $lead->created_at?->format('d/m/Y H:i') ?? '',
+            ], null, "A{$row}");
+            $row++;
         }
 
-        $csv      = "\xEF\xBB\xBF" . implode("\n", $rows);
-        $filename = 'leads-g4-' . now()->format('Y-m-d') . '.csv';
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
-        return response($csv, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        $filename = 'leads-g4-' . now()->format('Y-m-d') . '.xlsx';
+        $stub     = tempnam(sys_get_temp_dir(), 'leads_');
+        $tmpPath  = $stub . '.xlsx';
+        rename($stub, $tmpPath);
+
+        (new Xlsx($spreadsheet))->save($tmpPath);
+
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     private function scoreLabel(int $score): string
