@@ -19,11 +19,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://localhost:4173',
-        'http://127.0.0.1:5173',
-    ],
+    'allowed_origins' => array_filter(array_map('trim', explode(',', env(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,https://lp1.fmlsoftware.com.br'
+    )))),
 
     'allowed_origins_patterns' => [],
 
