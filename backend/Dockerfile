@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     freetype-dev \
     libxml2-dev \
     oniguruma-dev \
+    libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo \
@@ -21,7 +22,8 @@ RUN apk add --no-cache \
         pcntl \
         bcmath \
         gd \
-        xml
+        xml \
+        zip
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
