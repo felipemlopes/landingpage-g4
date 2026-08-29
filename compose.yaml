@@ -1,0 +1,43 @@
+services:
+  frontend:
+    build: .
+    container_name: landingpage_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    container_name: landingpage_backend
+    restart: always
+    ports:
+      - "3001:80"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://discloseagencia.com
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=landingpage
+      - DB_USERNAME=laravel
+      - DB_PASSWORD=Laravel@2026
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    container_name: landingpage_mysql
+    restart: always
+    environment:
+      - MYSQL_DATABASE=landingpage
+      - MYSQL_USER=laravel
+      - MYSQL_PASSWORD=Laravel@2026
+      - MYSQL_ROOT_PASSWORD=Root@2026
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
