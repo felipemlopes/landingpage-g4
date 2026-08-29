@@ -15,11 +15,19 @@ class Lead extends Model
         'email',
         'score',
         'answers',
+        'area_atuacao',
+        'faturamento_band',
+        'level',
+        'bottleneck_category',
+        'intencao_descoberta',
+        'intencao_compra',
+        'fit_investimento',
     ];
 
     protected $casts = [
         'answers'             => 'array',
         'score'               => 'integer',
+        'level'               => 'integer',
         'report_generated_at' => 'datetime',
     ];
 }

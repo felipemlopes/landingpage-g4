@@ -22,6 +22,9 @@ Route::get('/questions', [QuestionController::class, 'index']);
 // Submissão de lead após o quiz
 Route::post('/leads', [LeadController::class, 'store']);
 
+// Perguntas de qualificação pós-resultado (intenção de compra + fit de investimento)
+Route::put('/leads/{lead}/qualify', [LeadController::class, 'qualify']);
+
 // Geração de relatório PDF + envio WhatsApp — enfileira e devolve report_id (público)
 Route::post('/report', [ReportController::class, 'generate']);
 

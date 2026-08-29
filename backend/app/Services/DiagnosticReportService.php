@@ -22,14 +22,16 @@ class DiagnosticReportService
         return $this->whatsapp->isEnabled();
     }
 
+    private const GENERIC_LEVEL_LABELS = [
+        4 => 'Maturidade Avançada',
+        3 => 'Em Transição',
+        2 => 'Maturidade Inicial',
+        1 => 'Diagnóstico Crítico',
+    ];
+
     public function levelFor(int $score): string
     {
-        return match (true) {
-            $score >= 75 => 'Maturidade Avançada',
-            $score >= 50 => 'Em Transição',
-            $score >= 25 => 'Maturidade Inicial',
-            default      => 'Diagnóstico Crítico',
-        };
+        return self::GENERIC_LEVEL_LABELS[LevelClassifier::levelFor($score)];
     }
 
     /**

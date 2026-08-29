@@ -1,3 +1,5 @@
+import { APP_SHORT_NAME, APP_NAME } from '../config/brand';
+
 export default function Hero({ onStart }) {
   return (
     <section
@@ -45,14 +47,12 @@ export default function Hero({ onStart }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <svg width="48" height="22" viewBox="0 0 48 22" fill="none">
-            <text x="0" y="18" fontFamily="Sora,sans-serif" fontWeight="800" fontSize="20" fill="#A08A4E">
-              G4
-            </text>
-          </svg>
+          <span style={{ fontFamily: 'Sora,sans-serif', fontWeight: 800, fontSize: '20px', color: '#A08A4E', lineHeight: 1 }}>
+            {APP_SHORT_NAME}
+          </span>
           <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,.15)' }} />
           <span style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,.5)', letterSpacing: '.3px' }}>
-            Business
+            {APP_NAME}
           </span>
         </div>
       </nav>

@@ -3,6 +3,12 @@ import { adminQuestionsApi } from '../../services/api';
 import QuestionModal from './QuestionModal';
 import ConfirmModal from './ConfirmModal';
 
+const TYPE_LABELS = {
+  texto_livre: 'Texto livre',
+  escolha_unica: 'Escolha única',
+  multipla_com_outra: 'Múltipla + Outra',
+};
+
 export default function QuestionsPanel() {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -119,6 +125,23 @@ export default function QuestionsPanel() {
               <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: '#A08A4E', marginBottom: '4px' }}>{q.category}</div>
               <div style={{ fontSize: '14px', fontWeight: 500, color: '#0D0D17', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.text}</div>
               <div style={{ fontSize: '11px', color: 'rgba(13,13,23,.35)', marginTop: '3px' }}>{q.options?.length ?? 0} respostas</div>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                <span className="badge" style={{ background: 'rgba(160,138,78,.1)', border: '1px solid rgba(160,138,78,.25)', color: '#A08A4E' }}>
+                  {TYPE_LABELS[q.type] || q.type || 'escolha_unica'}
+                </span>
+                <span className="badge" style={{
+                  background: q.scored ? 'rgba(34,197,94,.1)' : 'rgba(107,114,128,.1)',
+                  border: `1px solid ${q.scored ? 'rgba(34,197,94,.25)' : 'rgba(107,114,128,.25)'}`,
+                  color: q.scored ? '#16a34a' : '#6b7280',
+                }}>
+                  {q.scored ? 'Pontua' : 'Não pontua'}
+                </span>
+                {q.category_slug && (
+                  <span className="badge" style={{ background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.25)', color: '#3b82f6' }}>
+                    {q.category_slug}
+                  </span>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
               {qi > 0 && (

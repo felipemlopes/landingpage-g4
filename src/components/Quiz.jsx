@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { questionsApi } from '../services/api';
 
+// Perguntas de qualificação comercial (10 e 11 do briefing) aparecem depois do
+// resultado, na tela Qualify — não fazem parte deste quiz inicial.
+const QUALIFY_SLUGS = ['intencao_compra', 'fit_investimento'];
+
+function isOtherLabel(label) {
+  return (label || '').trim().toLowerCase() === 'outra';
+}
+
 export default function Quiz({ onComplete }) {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -8,13 +16,18 @@ export default function Quiz({ onComplete }) {
   const [idx, setIdx]             = useState(0);
   const [answers, setAnswers]     = useState([]);
   const [visible, setVisible]     = useState(false);
-  const [selected, setSelected]   = useState(null);
 
-  // Busca perguntas da API ao montar
+  // Estado local da pergunta atual (resetado a cada troca de idx)
+  const [selected, setSelected]           = useState(null); // escolha_unica
+  const [textValue, setTextValue]         = useState('');   // texto_livre
+  const [multiSelected, setMultiSelected] = useState([]);   // multipla_com_outra
+  const [otherText, setOtherText]         = useState('');   // multipla_com_outra + "Outra"
+
   useEffect(() => {
     questionsApi.getAll()
       .then((data) => {
-        setQuestions(data);
+        const list = Array.isArray(data) ? data : [];
+        setQuestions(list.filter((q) => !QUALIFY_SLUGS.includes(q.category_slug)));
         setLoading(false);
       })
       .catch(() => {
@@ -26,31 +39,83 @@ export default function Quiz({ onComplete }) {
   const total = questions.length;
   const q     = questions[idx];
 
-  const scorePreview = answers.length
-    ? Math.round(answers.reduce((a, b) => a + b, 0) / answers.length)
+  const scoredAnswers = answers.filter((a) => a.points !== null && a.points !== undefined);
+  const scorePreview  = scoredAnswers.length
+    ? Math.round(scoredAnswers.reduce((sum, a) => sum + a.points, 0) / scoredAnswers.length)
     : 0;
   const progress = total > 0 ? Math.max(11, Math.round((idx / total) * 100)) : 11;
 
   useEffect(() => {
     if (!q) return;
     setVisible(false);
+    setSelected(null);
+    setTextValue('');
+    setMultiSelected([]);
+    setOtherText('');
     const t = setTimeout(() => setVisible(true), 160);
     return () => clearTimeout(t);
   }, [idx, q]);
 
-  function selectOption(i, points) {
+  function pushAnswerAndAdvance(answer) {
+    const newAnswers = [...answers, answer];
+    if (idx < total - 1) {
+      setAnswers(newAnswers);
+      setIdx(idx + 1);
+    } else {
+      onComplete(newAnswers, questions);
+    }
+  }
+
+  function selectSingle(optionIndex, option) {
     if (selected !== null) return;
-    setSelected(i);
+    setSelected(optionIndex);
     setTimeout(() => {
-      const newAnswers = [...answers, Number(points)];
-      if (idx < total - 1) {
-        setAnswers(newAnswers);
-        setIdx(idx + 1);
-        setSelected(null);
-      } else {
-        onComplete(newAnswers, questions);
-      }
+      pushAnswerAndAdvance({
+        questionId:   q.id,
+        categorySlug: q.category_slug,
+        type:         q.type,
+        scored:       q.scored,
+        value:        option.label,
+        points:       q.scored ? Number(option.points) : null,
+        otherText:    null,
+      });
     }, 380);
+  }
+
+  function submitText() {
+    const trimmed = textValue.trim();
+    if (!trimmed) return;
+    pushAnswerAndAdvance({
+      questionId:   q.id,
+      categorySlug: q.category_slug,
+      type:         q.type,
+      scored:       false,
+      value:        trimmed,
+      points:       null,
+      otherText:    null,
+    });
+  }
+
+  function toggleMultiOption(label) {
+    setMultiSelected((prev) => (
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    ));
+  }
+
+  const otherChecked   = multiSelected.some(isOtherLabel);
+  const canSubmitMulti = multiSelected.length > 0 && (!otherChecked || otherText.trim().length > 0);
+
+  function submitMulti() {
+    if (!canSubmitMulti) return;
+    pushAnswerAndAdvance({
+      questionId:   q.id,
+      categorySlug: q.category_slug,
+      type:         q.type,
+      scored:       false,
+      value:        multiSelected,
+      points:       null,
+      otherText:    otherChecked ? otherText.trim() : null,
+    });
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -128,61 +193,160 @@ export default function Quiz({ onComplete }) {
           <h2 style={{ fontSize: 'clamp(20px,4vw,28px)', fontWeight: 700, lineHeight: 1.3, marginBottom: '32px', textWrap: 'balance' }}>
             {q.text}
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {q.options.map((opt, i) => {
-              const letter    = String.fromCharCode(65 + i);
-              const isSelected = selected === i;
-              return (
-                <button
-                  key={opt.label}
-                  type="button"
-                  className="opt-btn"
-                  onClick={() => selectOption(i, opt.points)}
-                  style={{
-                    background: isSelected ? 'rgba(160,138,78,.15)' : 'rgba(19,25,48,.7)',
-                    border: `1.5px solid ${isSelected ? '#A08A4E' : 'rgba(255,255,255,.08)'}`,
-                    borderRadius: '10px',
-                    padding: '14px 16px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '12px',
-                    color: '#fff',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    lineHeight: 1.45,
-                    width: '100%',
-                    transition: 'all .15s',
-                    fontFamily: "'Sora',sans-serif",
-                    animation: `fadeUp .3s ${i * 55}ms cubic-bezier(.22,1,.36,1) both`,
-                  }}
-                >
-                  <span
-                    className="opt-letter"
+
+          {q.type === 'texto_livre' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Digite sua resposta..."
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitText(); }}
+                autoFocus
+              />
+              <button type="button" className="cta-btn" disabled={!textValue.trim()} onClick={submitText}>
+                Continuar
+              </button>
+            </div>
+          )}
+
+          {q.type === 'escolha_unica' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {q.options.map((opt, i) => {
+                const letter    = String.fromCharCode(65 + i);
+                const isSelected = selected === i;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    className="opt-btn"
+                    onClick={() => selectSingle(i, opt)}
                     style={{
-                      minWidth: '26px',
-                      height: '26px',
-                      borderRadius: '50%',
-                      border: `1.5px solid ${isSelected ? '#A08A4E' : 'rgba(255,255,255,.15)'}`,
+                      background: isSelected ? 'rgba(160,138,78,.15)' : 'rgba(19,25,48,.7)',
+                      border: `1.5px solid ${isSelected ? '#A08A4E' : 'rgba(255,255,255,.08)'}`,
+                      borderRadius: '10px',
+                      padding: '14px 16px',
+                      textAlign: 'left',
+                      cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: isSelected ? '#0D0D17' : 'rgba(255,255,255,.4)',
-                      background: isSelected ? '#A08A4E' : 'transparent',
-                      flexShrink: 0,
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: 1.45,
+                      width: '100%',
                       transition: 'all .15s',
+                      fontFamily: "'Sora',sans-serif",
+                      animation: `fadeUp .3s ${i * 55}ms cubic-bezier(.22,1,.36,1) both`,
                     }}
                   >
-                    {letter}
-                  </span>
-                  <span style={{ paddingTop: '2px' }}>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
+                    <span
+                      className="opt-letter"
+                      style={{
+                        minWidth: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        border: `1.5px solid ${isSelected ? '#A08A4E' : 'rgba(255,255,255,.15)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: isSelected ? '#0D0D17' : 'rgba(255,255,255,.4)',
+                        background: isSelected ? '#A08A4E' : 'transparent',
+                        flexShrink: 0,
+                        transition: 'all .15s',
+                      }}
+                    >
+                      {letter}
+                    </span>
+                    <span style={{ paddingTop: '2px' }}>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {q.type === 'multipla_com_outra' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {q.options.map((opt, i) => {
+                const isChecked = multiSelected.includes(opt.label);
+                return (
+                  <div key={opt.label}>
+                    <button
+                      type="button"
+                      className="opt-btn"
+                      onClick={() => toggleMultiOption(opt.label)}
+                      style={{
+                        background: isChecked ? 'rgba(160,138,78,.15)' : 'rgba(19,25,48,.7)',
+                        border: `1.5px solid ${isChecked ? '#A08A4E' : 'rgba(255,255,255,.08)'}`,
+                        borderRadius: '10px',
+                        padding: '14px 16px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        color: '#fff',
+                        fontSize: '14px',
+                        fontWeight: 400,
+                        lineHeight: 1.45,
+                        width: '100%',
+                        transition: 'all .15s',
+                        fontFamily: "'Sora',sans-serif",
+                        animation: `fadeUp .3s ${i * 55}ms cubic-bezier(.22,1,.36,1) both`,
+                      }}
+                    >
+                      <span
+                        className="opt-letter"
+                        style={{
+                          minWidth: '22px',
+                          height: '22px',
+                          borderRadius: '6px',
+                          border: `1.5px solid ${isChecked ? '#A08A4E' : 'rgba(255,255,255,.15)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: isChecked ? '#A08A4E' : 'transparent',
+                          flexShrink: 0,
+                          marginTop: '2px',
+                          transition: 'all .15s',
+                        }}
+                      >
+                        {isChecked && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D17" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                      <span style={{ paddingTop: '2px' }}>{opt.label}</span>
+                    </button>
+                    {isOtherLabel(opt.label) && isChecked && (
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Conte com suas palavras..."
+                        value={otherText}
+                        onChange={(e) => setOtherText(e.target.value)}
+                        style={{ marginTop: '8px' }}
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" className="cta-btn" disabled={!canSubmitMulti} onClick={submitMulti} style={{ marginTop: '6px' }}>
+                Continuar
+              </button>
+              {!canSubmitMulti && (
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>
+                  {otherChecked ? 'Digite sua resposta para continuar.' : 'Marque pelo menos uma opção para continuar.'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

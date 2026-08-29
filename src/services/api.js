@@ -96,10 +96,22 @@ export const questionsApi = {
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 export const leadsApi = {
-  /** Submete lead após o quiz (público) */
+  /**
+   * Submete lead após o quiz (público). Resolve com `{ lead, diagnosis }` —
+   * o diagnóstico (nível, gargalo, pontos fortes/atenção, prioridades) é
+   * calculado no backend, não aqui.
+   */
   async submit(payload) {
     return request('/leads', {
       method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Grava as respostas de qualificação pós-resultado (intenção + fit de investimento), público */
+  async qualify(id, payload) {
+    return request(`/leads/${id}/qualify`, {
+      method: 'PUT',
       body: JSON.stringify(payload),
     });
   },

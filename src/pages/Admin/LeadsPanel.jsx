@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { leadsApi } from '../../services/api';
-import { initials, scoreColor, scoreLabel } from './adminUtils';
+import { axisLabel, initials, levelLabel, scoreColor } from './adminUtils';
 
 const WHATSAPP_BADGE = {
   sent:     { label: 'Enviado',     bg: 'rgba(22,163,74,.1)',   color: '#16a34a' },
@@ -146,7 +146,9 @@ export default function LeadsPanel() {
             <thead>
               <tr>
                 <th>Lead</th><th>WhatsApp</th><th>E-mail</th>
-                <th style={{ textAlign: 'center' }}>Score</th><th>Data</th>
+                <th style={{ textAlign: 'center' }}>Score</th>
+                <th>Nível</th><th>Gargalo</th><th>Intenção</th><th>Fit Investimento</th>
+                <th>Data</th>
                 <th style={{ textAlign: 'center' }}>PDF</th>
                 <th style={{ textAlign: 'center' }}>Envio WhatsApp</th>
                 <th style={{ width: '36px' }}></th>
@@ -175,6 +177,10 @@ export default function LeadsPanel() {
                     <td style={{ textAlign: 'center' }}>
                       <span className="badge" style={{ background: col + '14', border: `1px solid ${col}33`, color: col }}>{sc} pts</span>
                     </td>
+                    <td style={{ fontSize: '12px', color: 'rgba(13,13,23,.6)' }}>{levelLabel(l.level, sc)}</td>
+                    <td style={{ fontSize: '12px', color: 'rgba(13,13,23,.6)' }}>{axisLabel(l.bottleneck_category)}</td>
+                    <td style={{ fontSize: '12px', color: 'rgba(13,13,23,.6)' }}>{l.intencao_compra || '—'}</td>
+                    <td style={{ fontSize: '12px', color: 'rgba(13,13,23,.6)' }}>{l.fit_investimento || '—'}</td>
                     <td style={{ color: 'rgba(13,13,23,.35)', fontSize: '12px' }}>{ds}</td>
                     <td style={{ textAlign: 'center', fontSize: '12px', color: l.report_generated_at ? '#16a34a' : 'rgba(13,13,23,.3)' }}>
                       {l.report_generated_at ? 'Gerado' : '—'}

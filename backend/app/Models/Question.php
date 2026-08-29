@@ -11,15 +11,21 @@ class Question extends Model
 
     protected $fillable = [
         'category',
+        'category_slug',
         'text',
+        'type',
+        'scored',
+        'allow_other',
         'options',
         'order',
         'active',
     ];
 
     protected $casts = [
-        'options' => 'array',
-        'order'   => 'integer',
-        'active'  => 'boolean',
+        'options'     => 'array',
+        'order'       => 'integer',
+        'active'      => 'boolean',
+        'scored'      => 'boolean',
+        'allow_other' => 'boolean',
     ];
 }
