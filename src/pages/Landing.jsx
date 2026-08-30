@@ -29,6 +29,7 @@ export default function Landing() {
   const [leadName, setLeadName]   = useState('');
   const [leadEmail, setLeadEmail] = useState('');
   const [diagnosis, setDiagnosis] = useState(null);
+  const [reportResult, setReportResult] = useState(null);
 
   function handleStart() {
     setView(VIEWS.QUIZ);
@@ -75,11 +76,10 @@ export default function Landing() {
         options: [{ label: a.value, points: a.points }],
       })),
     }).then((res) => {
-      if (res?.pdf) {
-        reportApi.download(res.pdf, res.filename || 'diagnostico-g4.pdf');
-      }
+      setReportResult(res);
     }).catch((err) => {
       console.error('Erro ao gerar relatório:', err);
+      setReportResult({ failed: true });
     });
 
     setView(VIEWS.RESULT);
@@ -107,6 +107,6 @@ export default function Landing() {
   if (view === VIEWS.LEAD_FORM) return <LeadForm onSubmit={handleLeadSubmit} />;
   if (view === VIEWS.RESULT)    return <DiagnosisResult name={leadName} diagnosis={diagnosis} onContinue={handleResultContinue} />;
   if (view === VIEWS.QUALIFY)   return <Qualify onComplete={handleQualifyComplete} />;
-  if (view === VIEWS.THANKYOU)  return <ThankYou name={leadName} email={leadEmail} />;
+  if (view === VIEWS.THANKYOU)  return <ThankYou name={leadName} email={leadEmail} reportResult={reportResult} />;
   return <Hero onStart={handleStart} />;
 }

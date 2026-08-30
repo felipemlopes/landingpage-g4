@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { whatsappApi } from '../../services/api';
+import { calendlySettingsApi, whatsappApi } from '../../services/api';
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLLS = 30; // ~2 minutos
@@ -24,6 +24,12 @@ export default function IntegracoesPanel() {
   const [settingsSaved, setSettingsSaved]   = useState(false);
   const [settingsError, setSettingsError]   = useState('');
 
+  const [calendlyUrl, setCalendlyUrl]       = useState(''); // último valor salvo
+  const [calendlyForm, setCalendlyForm]     = useState('');
+  const [savingCalendly, setSavingCalendly] = useState(false);
+  const [calendlySaved, setCalendlySaved]   = useState(false);
+  const [calendlyError, setCalendlyError]   = useState('');
+
   const pollRef      = useRef(null);
   const pollCountRef = useRef(0);
 
@@ -37,12 +43,15 @@ export default function IntegracoesPanel() {
     setLoading(true);
     setError('');
     try {
-      const [statusData, settingsData] = await Promise.all([
+      const [statusData, settingsData, calendlyData] = await Promise.all([
         whatsappApi.status(),
         whatsappApi.getSettings(),
+        calendlySettingsApi.get(),
       ]);
       setStatus(statusData);
       applySettings(settingsData);
+      setCalendlyUrl(calendlyData.url || '');
+      setCalendlyForm(calendlyData.url || '');
     } catch (err) {
       setError(err.message || 'Erro ao consultar as integrações.');
     } finally {
@@ -138,6 +147,28 @@ export default function IntegracoesPanel() {
     }
   }
 
+  function updateCalendlyField(value) {
+    setCalendlyForm(value);
+    setCalendlySaved(false);
+  }
+
+  async function handleSaveCalendly(e) {
+    e.preventDefault();
+    setSavingCalendly(true);
+    setCalendlyError('');
+    setCalendlySaved(false);
+    try {
+      const data = await calendlySettingsApi.save(calendlyForm);
+      setCalendlyUrl(data.url || '');
+      setCalendlyForm(data.url || '');
+      setCalendlySaved(true);
+    } catch (err) {
+      setCalendlyError(err.message || 'Erro ao salvar o link do Calendly.');
+    } finally {
+      setSavingCalendly(false);
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
       <div style={{ width: '32px', height: '32px', border: '3px solid rgba(160,138,78,.2)', borderTopColor: '#A08A4E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -154,6 +185,7 @@ export default function IntegracoesPanel() {
     form.cloud_waba_id !== (settings.cloud_waba_id || '') ||
     !!form.cloud_token
   );
+  const calendlyDirty = calendlyForm !== calendlyUrl;
 
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -325,6 +357,55 @@ export default function IntegracoesPanel() {
           </button>
         </div>
       </div>
+
+      {/* ── Calendly ──────────────────────────────────────────────────────── */}
+      <form onSubmit={handleSaveCalendly} style={{ background: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+            Calendly
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(13,13,23,.45)', lineHeight: 1.6, marginTop: '6px' }}>
+            Link de agendamento usado no CTA final do diagnóstico ("Quero analisar
+            meu escritório"). Deixe em branco para desabilitar o botão.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Link de agendamento
+          </label>
+          <input
+            type="url"
+            className="field"
+            placeholder="https://calendly.com/sua-empresa/evento"
+            value={calendlyForm}
+            onChange={(e) => updateCalendlyField(e.target.value)}
+          />
+        </div>
+
+        {calendlyError && (
+          <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+            {calendlyError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="submit"
+            disabled={savingCalendly}
+            className="btn btn-accent"
+            style={{ fontSize: '13px', padding: '9px 18px', opacity: savingCalendly ? 0.7 : 1 }}
+          >
+            {savingCalendly ? 'Salvando...' : 'Salvar link'}
+          </button>
+          {calendlySaved && (
+            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Configuração salva.</span>
+          )}
+          {calendlyDirty && !calendlySaved && (
+            <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)' }}>Alterações não salvas.</span>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

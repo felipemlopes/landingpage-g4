@@ -223,6 +223,23 @@ export const whatsappApi = {
   },
 };
 
+// ── Calendly ──────────────────────────────────────────────────────────────────
+
+export const calendlySettingsApi = {
+  /** Leitura pública — usada tanto pelo site (ThankYou) quanto para pré-preencher o admin */
+  async get() {
+    return request('/calendly-settings');
+  },
+
+  /** Salva a URL de agendamento (admin) */
+  async save(url) {
+    return request('/admin/calendly-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ url }),
+    });
+  },
+};
+
 export const adminQuestionsApi = {
   async getAll() {
     return request('/admin/questions');

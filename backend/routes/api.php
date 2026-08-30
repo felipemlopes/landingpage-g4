@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendlySettingController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestionController;
@@ -31,6 +32,9 @@ Route::post('/report', [ReportController::class, 'generate']);
 // Polling do status/resultado do relatório enfileirado (público, resolvido por token opaco)
 Route::get('/report/{report:token}', [ReportController::class, 'show']);
 
+// Link de agendamento do Calendly configurado pelo admin (público, não sensível)
+Route::get('/calendly-settings', [CalendlySettingController::class, 'show']);
+
 // Autenticação admin
 Route::prefix('auth')->group(function () {
     Route::post('/login',   [AuthController::class, 'login']);
@@ -50,6 +54,9 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     Route::post('/whatsapp/connect', [WhatsAppController::class, 'connect']);
     Route::get('/whatsapp/settings', [WhatsAppController::class, 'settings']);
     Route::put('/whatsapp/settings', [WhatsAppController::class, 'updateSettings']);
+
+    // Integrações — Calendly
+    Route::put('/calendly-settings', [CalendlySettingController::class, 'update']);
 
     // Leads
     Route::get('/leads',                    [LeadController::class, 'index']);
