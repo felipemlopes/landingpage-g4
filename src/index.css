@@ -84,5 +84,5 @@ input::placeholder { color: rgba(255,255,255,.3); }
   gap: 10px;
   transition: background .2s;
 }
-.cta-btn:hover { background: var(--gold-light); }
+.cta-btn:hover { background: var(--gold-light); color: var(--bg) !important; }
 .cta-btn:disabled { opacity: .6; cursor: not-allowed; }
