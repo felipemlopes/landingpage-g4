@@ -240,6 +240,23 @@ export const calendlySettingsApi = {
   },
 };
 
+// ── IA (OpenAI) ──────────────────────────────────────────────────────────────
+
+export const aiSettingsApi = {
+  /** Configuração atual (admin) — a key sempre vem mascarada */
+  async getSettings() {
+    return request('/admin/ai-settings');
+  },
+
+  /** Salva uma key nova (admin). Vazio é ignorado pelo backend — não desconfigura. */
+  async saveSettings(openai_api_key) {
+    return request('/admin/ai-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ openai_api_key }),
+    });
+  },
+};
+
 export const adminQuestionsApi = {
   async getAll() {
     return request('/admin/questions');

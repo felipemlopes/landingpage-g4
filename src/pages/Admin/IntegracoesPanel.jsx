@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { calendlySettingsApi, whatsappApi } from '../../services/api';
+import { aiSettingsApi, calendlySettingsApi, whatsappApi } from '../../services/api';
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLLS = 30; // ~2 minutos
@@ -18,6 +18,8 @@ export default function IntegracoesPanel() {
   const [qrCode, setQrCode]         = useState(null);
   const [error, setError]           = useState('');
 
+  const [showConnectModal, setShowConnectModal] = useState(false);
+
   const [settings, setSettings]         = useState(null); // últimos dados salvos (vindos da API)
   const [form, setForm]                 = useState(emptyForm);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -29,6 +31,12 @@ export default function IntegracoesPanel() {
   const [savingCalendly, setSavingCalendly] = useState(false);
   const [calendlySaved, setCalendlySaved]   = useState(false);
   const [calendlyError, setCalendlyError]   = useState('');
+
+  const [aiSettings, setAiSettings] = useState(null); // { openai_api_key_set, openai_api_key_masked }
+  const [aiKeyForm, setAiKeyForm]   = useState('');
+  const [savingAi, setSavingAi]     = useState(false);
+  const [aiSaved, setAiSaved]       = useState(false);
+  const [aiError, setAiError]       = useState('');
 
   const pollRef      = useRef(null);
   const pollCountRef = useRef(0);
@@ -43,15 +51,17 @@ export default function IntegracoesPanel() {
     setLoading(true);
     setError('');
     try {
-      const [statusData, settingsData, calendlyData] = await Promise.all([
+      const [statusData, settingsData, calendlyData, aiData] = await Promise.all([
         whatsappApi.status(),
         whatsappApi.getSettings(),
         calendlySettingsApi.get(),
+        aiSettingsApi.getSettings(),
       ]);
       setStatus(statusData);
       applySettings(settingsData);
       setCalendlyUrl(calendlyData.url || '');
       setCalendlyForm(calendlyData.url || '');
+      setAiSettings(aiData);
     } catch (err) {
       setError(err.message || 'Erro ao consultar as integrações.');
     } finally {
@@ -105,6 +115,7 @@ export default function IntegracoesPanel() {
   }
 
   async function handleConnect() {
+    setShowConnectModal(true); // abre o modal já em estado de "criando instância..."
     setConnecting(true);
     setError('');
     try {
@@ -121,6 +132,11 @@ export default function IntegracoesPanel() {
     } finally {
       setConnecting(false);
     }
+  }
+
+  function closeConnectModal() {
+    setShowConnectModal(false);
+    stopPolling();
   }
 
   function updateField(field, value) {
@@ -169,6 +185,29 @@ export default function IntegracoesPanel() {
     }
   }
 
+  function updateAiKeyField(value) {
+    setAiKeyForm(value);
+    setAiSaved(false);
+  }
+
+  async function handleSaveAiKey(e) {
+    e.preventDefault();
+    if (!aiKeyForm) return; // vazio não altera nada (Requisito 1.3) — nem chama a API
+    setSavingAi(true);
+    setAiError('');
+    setAiSaved(false);
+    try {
+      const data = await aiSettingsApi.saveSettings(aiKeyForm);
+      setAiSettings(data);
+      setAiKeyForm(''); // a key nunca é re-exibida em texto puro
+      setAiSaved(true);
+    } catch (err) {
+      setAiError(err.message || 'Erro ao salvar a API key.');
+    } finally {
+      setSavingAi(false);
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
       <div style={{ width: '32px', height: '32px', border: '3px solid rgba(160,138,78,.2)', borderTopColor: '#A08A4E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -189,6 +228,7 @@ export default function IntegracoesPanel() {
 
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div className="page-header">
         <div>
           <h1 style={{ fontSize: 'clamp(18px,3.5vw,24px)', fontWeight: 700, letterSpacing: '-.3px' }}>Integrações</h1>
@@ -322,19 +362,6 @@ export default function IntegracoesPanel() {
           <p style={{ fontSize: '13px', color: 'rgba(13,13,23,.5)', lineHeight: 1.6 }}>{status.detail}</p>
         )}
 
-        {qrCode && !status?.connected && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '16px', background: 'rgba(160,138,78,.05)', borderRadius: '8px' }}>
-            <img
-              src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-              alt="QR Code para conectar o WhatsApp"
-              style={{ width: '220px', height: '220px' }}
-            />
-            <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)', textAlign: 'center' }}>
-              Escaneie com o WhatsApp do número que vai enviar os diagnósticos.
-            </span>
-          </div>
-        )}
-
         {error && (
           <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
             {error}
@@ -406,6 +433,134 @@ export default function IntegracoesPanel() {
           )}
         </div>
       </form>
+
+      {/* ── IA (OpenAI) ───────────────────────────────────────────────────── */}
+      <form onSubmit={handleSaveAiKey} style={{ background: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+            IA (OpenAI)
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(13,13,23,.45)', lineHeight: 1.6, marginTop: '6px' }}>
+            API key usada para gerar o relatório de diagnóstico. O modelo e o
+            provider de IA continuam configurados no servidor.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            API Key
+          </label>
+          <input
+            type="password"
+            className="field"
+            placeholder={aiSettings?.openai_api_key_set ? aiSettings.openai_api_key_masked : 'sk-...'}
+            value={aiKeyForm}
+            onChange={(e) => updateAiKeyField(e.target.value)}
+            autoComplete="off"
+          />
+          {aiSettings?.openai_api_key_set && (
+            <span style={{ fontSize: '11px', color: 'rgba(13,13,23,.35)', marginTop: '5px', display: 'block' }}>
+              Já configurada. Deixe em branco para manter a key atual.
+            </span>
+          )}
+        </div>
+
+        {aiError && (
+          <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+            {aiError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="submit"
+            disabled={savingAi || !aiKeyForm}
+            title={!aiKeyForm ? 'Cole uma key nova para salvar' : ''}
+            className="btn btn-accent"
+            style={{ fontSize: '13px', padding: '9px 18px', opacity: savingAi || !aiKeyForm ? 0.7 : 1 }}
+          >
+            {savingAi ? 'Salvando...' : 'Salvar key'}
+          </button>
+          {aiSaved && (
+            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Configuração salva.</span>
+          )}
+        </div>
+      </form>
+
+      {/* ── Modal: criar instância / escanear QR Code ────────────────────── */}
+      {showConnectModal && (
+        <div
+          onClick={closeConnectModal}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(13,13,23,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '14px', padding: '28px', maxWidth: '360px', width: '100%', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+                Conectar WhatsApp
+              </span>
+              <button
+                type="button"
+                onClick={closeConnectModal}
+                aria-label="Fechar"
+                className="btn btn-ghost"
+                style={{ padding: '4px 10px', fontSize: '14px', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {connecting && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '24px 0' }}>
+                <div style={{ width: '28px', height: '28px', border: '3px solid rgba(160,138,78,.2)', borderTopColor: '#A08A4E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <span style={{ fontSize: '13px', color: 'rgba(13,13,23,.5)' }}>
+                  {isEvolution ? 'Criando instância...' : 'Testando conexão...'}
+                </span>
+              </div>
+            )}
+
+            {!connecting && status?.connected && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px 0' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(22,163,74,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', fontSize: '20px' }}>✓</div>
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>WhatsApp conectado.</span>
+              </div>
+            )}
+
+            {!connecting && !status?.connected && qrCode && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                <img
+                  src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                  alt="QR Code para conectar o WhatsApp"
+                  style={{ width: '220px', height: '220px' }}
+                />
+                <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)', textAlign: 'center' }}>
+                  Escaneie com o WhatsApp do número que vai enviar os diagnósticos.
+                  Aguardando leitura...
+                </span>
+              </div>
+            )}
+
+            {!connecting && !status?.connected && !qrCode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '13px', color: 'rgba(13,13,23,.55)', lineHeight: 1.6, margin: 0 }}>
+                  {status?.detail || 'Não foi possível gerar o QR Code.'}
+                </p>
+                <button type="button" onClick={handleConnect} className="btn btn-primary" style={{ fontSize: '13px', padding: '9px 18px' }}>
+                  Tentar novamente
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+                {error}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
