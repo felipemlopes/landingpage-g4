@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendlySettingController;
 use App\Http\Controllers\LeadController;
@@ -57,6 +58,11 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
 
     // Integrações — Calendly
     Route::put('/calendly-settings', [CalendlySettingController::class, 'update']);
+
+    // Integrações — IA (OpenAI). Sem rota pública: a key nunca é lida fora
+    // do admin autenticado (ao contrário do link do Calendly).
+    Route::get('/ai-settings', [AiSettingController::class, 'index']);
+    Route::put('/ai-settings', [AiSettingController::class, 'update']);
 
     // Leads
     Route::get('/leads',                    [LeadController::class, 'index']);

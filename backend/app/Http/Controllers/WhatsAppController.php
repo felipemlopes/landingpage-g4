@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\WhatsappSetting;
 use App\Services\WhatsApp\WhatsAppProviderInterface;
+use App\Support\Masks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,7 +54,7 @@ class WhatsAppController extends Controller
             'cloud_phone_number_id' => $settings->cloud_phone_number_id,
             'cloud_waba_id'         => $settings->cloud_waba_id,
             'cloud_token_set'       => !empty($settings->cloud_token),
-            'cloud_token_masked'    => $this->maskToken($settings->cloud_token),
+            'cloud_token_masked'    => Masks::last4($settings->cloud_token),
         ]);
     }
 
@@ -90,17 +91,7 @@ class WhatsAppController extends Controller
             'cloud_phone_number_id' => $settings->cloud_phone_number_id,
             'cloud_waba_id'         => $settings->cloud_waba_id,
             'cloud_token_set'       => !empty($settings->cloud_token),
-            'cloud_token_masked'    => $this->maskToken($settings->cloud_token),
+            'cloud_token_masked'    => Masks::last4($settings->cloud_token),
         ]);
-    }
-
-    private function maskToken(?string $token): ?string
-    {
-        if (empty($token)) return null;
-
-        $len = strlen($token);
-        if ($len <= 4) return str_repeat('•', $len);
-
-        return str_repeat('•', min($len - 4, 24)) . substr($token, -4);
     }
 }

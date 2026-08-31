@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class EvolutionProvider implements WhatsAppProviderInterface
 {
@@ -126,8 +127,11 @@ class EvolutionProvider implements WhatsAppProviderInterface
             }
 
             // Instância ainda não existe nesta Evolution API — cria antes de pedir o QR.
+            $justCreated = false;
             if (($current['meta']['exists'] ?? true) === false) {
-                $created = $this->createInstance();
+                $created     = $this->createInstance();
+                $justCreated = true;
+
                 if ($created !== null) {
                     return [
                         'connected' => false,
@@ -135,9 +139,16 @@ class EvolutionProvider implements WhatsAppProviderInterface
                         'qrCode'    => $created,
                     ];
                 }
+                // A Evolution API pode criar a instância sem devolver o QR já na
+                // resposta de criação (varia por versão) — cai para fetchQrCode()
+                // abaixo, com retry, em vez de assumir falha.
             }
 
-            $qrBase64 = $this->fetchQrCode();
+            // Logo após criar a instância, o socket (Baileys) pode levar um
+            // instante pra ficar pronto — tenta algumas vezes antes de desistir.
+            $qrBase64 = $justCreated
+                ? $this->fetchQrCodeWithRetry()
+                : $this->fetchQrCode();
 
             if (!empty($qrBase64)) {
                 return [
@@ -174,6 +185,11 @@ class EvolutionProvider implements WhatsAppProviderInterface
             ]);
 
         if (!$response->successful()) {
+            Log::warning('Evolution API: falha ao criar instância', [
+                'instance' => $this->instance,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
             return null;
         }
 
@@ -181,7 +197,9 @@ class EvolutionProvider implements WhatsAppProviderInterface
     }
 
     /**
-     * Busca o QR Code de uma instância já existente.
+     * Busca o QR Code de uma instância já existente. Retorna null (sem
+     * exceção) se a Evolution API responder com erro — quem chama decide
+     * se tenta de novo (ver fetchQrCodeWithRetry()).
      */
     private function fetchQrCode(): ?string
     {
@@ -190,10 +208,37 @@ class EvolutionProvider implements WhatsAppProviderInterface
             ->get("{$this->url}/instance/connect/{$this->instance}");
 
         if (!$response->successful()) {
+            Log::warning('Evolution API: falha ao buscar QR Code', [
+                'instance' => $this->instance,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
             return null;
         }
 
         return $response->json('base64') ?? $response->json('qrcode.base64');
+    }
+
+    /**
+     * Tenta buscar o QR Code algumas vezes com um pequeno intervalo — logo
+     * após criar a instância, o socket da Evolution API pode levar um
+     * instante para ficar pronto para gerar o QR (visto em produção: a
+     * primeira tentativa imediatamente após /instance/create pode falhar
+     * mesmo com a instância já criada com sucesso).
+     */
+    private function fetchQrCodeWithRetry(int $attempts = 3, int $delayMs = 800): ?string
+    {
+        for ($i = 1; $i <= $attempts; $i++) {
+            $qr = $this->fetchQrCode();
+            if (!empty($qr)) {
+                return $qr;
+            }
+            if ($i < $attempts) {
+                usleep($delayMs * 1000);
+            }
+        }
+
+        return null;
     }
 
     /**

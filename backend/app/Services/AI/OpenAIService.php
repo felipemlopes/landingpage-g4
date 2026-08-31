@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use App\Models\AiSetting;
 use Illuminate\Support\Facades\Http;
 
 class OpenAIService implements AIReportProviderInterface
@@ -13,7 +14,9 @@ class OpenAIService implements AIReportProviderInterface
 
     public function __construct()
     {
-        $this->apiKey = config('services.openai.key');
+        // Fonte primária: banco (configurável pelo admin em Integrações).
+        // Fallback: .env — cobre instalação nova ou linha ainda não semeada.
+        $this->apiKey = AiSetting::current()->openai_api_key ?: config('services.openai.key');
         $this->model  = config('services.openai.model', 'gpt-4o-mini');
     }
 
