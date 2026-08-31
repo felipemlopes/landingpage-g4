@@ -83,6 +83,11 @@ class EvolutionProvider implements WhatsAppProviderInterface
             }
 
             if (!$response->successful()) {
+                Log::warning('Evolution API: falha ao consultar status da instância', [
+                    'instance' => $this->instance,
+                    'status'   => $response->status(),
+                    'body'     => $response->body(),
+                ]);
                 return [
                     'connected' => false,
                     'detail'    => 'Não foi possível consultar o status da instância na Evolution API.',
