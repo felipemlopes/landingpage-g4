@@ -32,8 +32,10 @@ trait PromptBuilder
             $answersText .= "- {$q['category']}: {$selectedOption} ({$pts} pts)\n";
         }
 
+        $brand = config('app.name');
+
         return <<<PROMPT
-Você é um especialista em estratégia comercial da G4 Educação.
+Você é um especialista em estratégia comercial da {$brand}.
 Gere um relatório de diagnóstico comercial PERSONALIZADO e PROFISSIONAL em português brasileiro para a empresa do lead abaixo.
 
 DADOS DO LEAD:
@@ -54,7 +56,7 @@ INSTRUÇÕES:
   3. Pontos fortes identificados (baseado nas respostas com maior pontuação)
   4. Principais gargalos (baseado nas respostas com menor pontuação)
   5. Plano de ação: 3 recomendações práticas e específicas
-  6. Próximos passos com a G4
+  6. Próximos passos com a {$brand}
 - Tom: profissional, direto, motivador
 - NÃO inclua <!DOCTYPE>, <html>, <head>, <body> ou estilos CSS inline
 - Máximo 600 palavras

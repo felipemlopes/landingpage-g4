@@ -82,7 +82,7 @@ class ReportController extends Controller
         }
 
         $base64   = base64_encode(Storage::disk('local')->get($path));
-        $filename = "diagnostico-g4-{$lead->id}.pdf";
+        $filename = 'diagnostico-' . Str::slug(config('app.name')) . "-{$lead->id}.pdf";
         $level    = $this->reports->levelFor($lead->score);
 
         [$whatsappSent, $whatsappError] = $this->reports->deliverViaWhatsApp(

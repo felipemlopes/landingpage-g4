@@ -184,7 +184,7 @@
 
 <!-- Cabeçalho -->
 <div class="header">
-  <div class="header-brand">G4 Business</div>
+  <div class="header-brand">{{ config('app.name') }}</div>
   <div class="header-subtitle">Diagnóstico Comercial · Relatório Personalizado</div>
   <div class="header-divider"></div>
   <div class="header-score-row">
@@ -226,7 +226,7 @@
 
 <!-- Rodapé -->
 <div class="footer">
-  <div class="footer-brand">G4 Business</div>
+  <div class="footer-brand">{{ config('app.name') }}</div>
   <div class="footer-text">Diagnóstico Comercial Personalizado</div>
   <div class="footer-date">{{ $date }}</div>
 </div>

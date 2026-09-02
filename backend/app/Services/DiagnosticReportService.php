@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\MessageSetting;
 use App\Services\AI\AIReportProviderInterface;
 use App\Services\WhatsApp\WhatsAppProviderInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 /**
  * Monta o conteúdo do diagnóstico (IA + PDF) e cuida do envio via WhatsApp.
@@ -21,6 +23,14 @@ class DiagnosticReportService
     {
         return $this->whatsapp->isEnabled();
     }
+
+    /**
+     * Template padrão da mensagem de texto enviada junto do PDF — usado
+     * quando o admin nunca configurou (ou limpou) um template customizado em
+     * Integrações. Suporta as variáveis {nome}, {pontuacao} e {nivel}.
+     */
+    public const DEFAULT_WHATSAPP_TEMPLATE =
+        "Olá, *{nome}*! 👋\n\nSeu diagnóstico comercial está pronto. Você alcançou *{pontuacao}/100 pontos* — nível *{nivel}*.\n\nSegue em anexo seu relatório personalizado com o plano de crescimento. Nossa equipe entrará em contato em breve! 🚀";
 
     private const GENERIC_LEVEL_LABELS = [
         4 => 'Maturidade Avançada',
@@ -64,7 +74,7 @@ class DiagnosticReportService
         return [
             'aiProvider' => $aiProvider,
             'pdfContent' => $pdf->output(),
-            'filename'   => 'diagnostico-g4-' . now()->format('Y-m-d') . '.pdf',
+            'filename'   => 'diagnostico-' . Str::slug(config('app.name')) . '-' . now()->format('Y-m-d') . '.pdf',
             'level'      => $level,
         ];
     }
@@ -76,12 +86,17 @@ class DiagnosticReportService
     public function deliverViaWhatsApp(string $phone, string $name, int $score, string $level, string $base64Pdf, string $filename): array
     {
         try {
-            $this->whatsapp->sendText(
-                $phone,
-                "Olá, *{$name}*! 👋\n\nSeu diagnóstico comercial está pronto. Você alcançou *{$score}/100 pontos* — nível *{$level}*.\n\nSegue em anexo seu relatório personalizado com o plano de crescimento. Nossa equipe entrará em contato em breve! 🚀"
-            );
+            $template = MessageSetting::current()->whatsapp_message_template ?: self::DEFAULT_WHATSAPP_TEMPLATE;
+            $message  = strtr($template, [
+                '{nome}'      => $name,
+                '{pontuacao}' => (string) $score,
+                '{nivel}'     => $level,
+            ]);
 
-            $sent = $this->whatsapp->sendDocument($phone, $base64Pdf, $filename, '📊 Diagnóstico Comercial G4 Business');
+            $this->whatsapp->sendText($phone, $message);
+
+            // Legenda do PDF anexado continua fixa — fora de escopo (Requisito 1.7)
+            $sent = $this->whatsapp->sendDocument($phone, $base64Pdf, $filename, '📊 Diagnóstico Comercial ' . config('app.name'));
 
             return [$sent, $sent ? null : 'O provider de WhatsApp recusou o envio.'];
         } catch (\Throwable $e) {
@@ -111,7 +126,7 @@ class DiagnosticReportService
         return "
         <div class='section'>
             <h2>Olá, {$data['name']}!</h2>
-            <p>Obrigado por completar o diagnóstico comercial da G4 Business. Seu resultado mostra um score de <strong>{$data['score']}/100</strong>, classificado como <strong>{$level}</strong>.</p>
+            <p>Obrigado por completar o diagnóstico comercial da " . config('app.name') . ". Seu resultado mostra um score de <strong>{$data['score']}/100</strong>, classificado como <strong>{$level}</strong>.</p>
         </div>
         <div class='highlight'>
             <h3>Próximos Passos</h3>

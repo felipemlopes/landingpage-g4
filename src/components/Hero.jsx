@@ -98,11 +98,11 @@ export default function Hero({ onStart }) {
               textWrap: 'balance',
             }}
           >
-            Descubra o nível de
+            Diagnóstico gratuito de como estruturar
             <br />
-            <span style={{ color: '#A08A4E' }}>maturidade comercial</span>
+            <span style={{ color: '#A08A4E' }}>marketing, comercial e vendas</span>
             <br />
-            da sua empresa
+            do seu escritório
           </h1>
 
           <p
@@ -116,7 +116,7 @@ export default function Hero({ onStart }) {
               fontWeight: 300,
             }}
           >
-            9 perguntas sobre como sua empresa gera e converte clientes. Receba o resultado e um plano personalizado no WhatsApp.
+            Descubra em 2 minutos onde está o gargalo que trava o crescimento de seu escritório — e receba um plano personalizado no WhatsApp para parar de depender de indicação.
           </p>
 
           <div

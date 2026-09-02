@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { aiSettingsApi, calendlySettingsApi, whatsappApi } from '../../services/api';
+import { aiSettingsApi, calendlySettingsApi, messageSettingsApi, pixelSettingsApi, whatsappApi } from '../../services/api';
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLLS = 30; // ~2 minutos
@@ -10,6 +10,13 @@ const emptyForm = {
   cloud_phone_number_id: '',
   cloud_waba_id: '',
 };
+
+// Template customizado se existir; senão o padrão do backend, já pronto pra
+// edição (não um placeholder fantasma) — ver correção do bug relatado onde o
+// texto padrão aparecia mas não dava pra editar de fato.
+function templateOrDefault(data) {
+  return data?.whatsapp_message_template || data?.whatsapp_message_default || '';
+}
 
 export default function IntegracoesPanel() {
   const [loading, setLoading]       = useState(true);
@@ -38,6 +45,18 @@ export default function IntegracoesPanel() {
   const [aiSaved, setAiSaved]       = useState(false);
   const [aiError, setAiError]       = useState('');
 
+  const [messageSettings, setMessageSettings] = useState(null); // { whatsapp_message_template, whatsapp_message_default }
+  const [messageForm, setMessageForm]         = useState('');
+  const [savingMessage, setSavingMessage]     = useState(false);
+  const [messageSaved, setMessageSaved]       = useState(false);
+  const [messageError, setMessageError]       = useState('');
+
+  const [pixelId, setPixelId]         = useState(''); // último valor salvo
+  const [pixelForm, setPixelForm]     = useState('');
+  const [savingPixel, setSavingPixel] = useState(false);
+  const [pixelSaved, setPixelSaved]   = useState(false);
+  const [pixelError, setPixelError]   = useState('');
+
   const pollRef      = useRef(null);
   const pollCountRef = useRef(0);
 
@@ -51,17 +70,23 @@ export default function IntegracoesPanel() {
     setLoading(true);
     setError('');
     try {
-      const [statusData, settingsData, calendlyData, aiData] = await Promise.all([
+      const [statusData, settingsData, calendlyData, aiData, messageData, pixelData] = await Promise.all([
         whatsappApi.status(),
         whatsappApi.getSettings(),
         calendlySettingsApi.get(),
         aiSettingsApi.getSettings(),
+        messageSettingsApi.getSettings(),
+        pixelSettingsApi.get(),
       ]);
       setStatus(statusData);
       applySettings(settingsData);
       setCalendlyUrl(calendlyData.url || '');
       setCalendlyForm(calendlyData.url || '');
       setAiSettings(aiData);
+      setMessageSettings(messageData);
+      setMessageForm(templateOrDefault(messageData));
+      setPixelId(pixelData.meta_pixel_id || '');
+      setPixelForm(pixelData.meta_pixel_id || '');
     } catch (err) {
       setError(err.message || 'Erro ao consultar as integrações.');
     } finally {
@@ -208,6 +233,75 @@ export default function IntegracoesPanel() {
     }
   }
 
+  function updateMessageField(value) {
+    setMessageForm(value);
+    setMessageSaved(false);
+  }
+
+  async function handleSaveMessage(e) {
+    e.preventDefault();
+    if (messageForm.length > 4096) return;
+    setSavingMessage(true);
+    setMessageError('');
+    setMessageSaved(false);
+    try {
+      const data = await messageSettingsApi.saveSettings(messageForm);
+      setMessageSettings(data);
+      setMessageForm(templateOrDefault(data));
+      setMessageSaved(true);
+    } catch (err) {
+      setMessageError(err.message || 'Erro ao salvar a mensagem.');
+    } finally {
+      setSavingMessage(false);
+    }
+  }
+
+  async function handleRestoreDefaultMessage() {
+    setSavingMessage(true);
+    setMessageError('');
+    setMessageSaved(false);
+    try {
+      const data = await messageSettingsApi.saveSettings('');
+      setMessageSettings(data);
+      setMessageForm(templateOrDefault(data));
+      setMessageSaved(true);
+    } catch (err) {
+      setMessageError(err.message || 'Erro ao restaurar o padrão.');
+    } finally {
+      setSavingMessage(false);
+    }
+  }
+
+  function messagePreview() {
+    const template = messageForm || messageSettings?.whatsapp_message_default || '';
+    return template
+      .split('{nome}').join('João Silva')
+      .split('{pontuacao}').join('82')
+      .split('{nivel}').join('Em Transição');
+  }
+
+  function updatePixelField(value) {
+    setPixelForm(value);
+    setPixelSaved(false);
+  }
+
+  async function handleSavePixel(e) {
+    e.preventDefault();
+    setSavingPixel(true);
+    setPixelError('');
+    setPixelSaved(false);
+    try {
+      const data = await pixelSettingsApi.save(pixelForm);
+      setPixelId(data.meta_pixel_id || '');
+      setPixelForm(data.meta_pixel_id || '');
+      setPixelSaved(true);
+    } catch (err) {
+      setPixelError(err.message || 'Erro ao salvar o Pixel ID.');
+    } finally {
+      setSavingPixel(false);
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
       <div style={{ width: '32px', height: '32px', border: '3px solid rgba(160,138,78,.2)', borderTopColor: '#A08A4E', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -225,6 +319,9 @@ export default function IntegracoesPanel() {
     !!form.cloud_token
   );
   const calendlyDirty = calendlyForm !== calendlyUrl;
+  const messageDirty  = messageForm !== templateOrDefault(messageSettings);
+  const messageTooLong = messageForm.length > 4096;
+  const pixelDirty    = pixelForm !== pixelId;
 
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -483,6 +580,131 @@ export default function IntegracoesPanel() {
           </button>
           {aiSaved && (
             <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Configuração salva.</span>
+          )}
+        </div>
+      </form>
+
+      {/* ── Mensagem do WhatsApp ──────────────────────────────────────────── */}
+      <form onSubmit={handleSaveMessage} style={{ background: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+            Mensagem do WhatsApp
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(13,13,23,.45)', lineHeight: 1.6, marginTop: '6px' }}>
+            Texto enviado antes do PDF do diagnóstico. O campo abaixo já vem
+            preenchido com o texto padrão — edite à vontade. Use{' '}
+            <code>{'{nome}'}</code>, <code>{'{pontuacao}'}</code> e{' '}
+            <code>{'{nivel}'}</code> para personalizar.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Texto da mensagem
+          </label>
+          <textarea
+            className="field"
+            rows={6}
+            placeholder={messageSettings?.whatsapp_message_default}
+            value={messageForm}
+            onChange={(e) => updateMessageField(e.target.value)}
+            style={{ resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6, width: '100%' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: messageTooLong ? '#dc2626' : 'rgba(13,13,23,.35)' }}>
+              {messageForm.length} / 4096
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Preview (valores de exemplo)
+          </label>
+          <div style={{ background: 'rgba(160,138,78,.06)', border: '1px solid rgba(160,138,78,.15)', borderRadius: '8px', padding: '14px 16px', fontSize: '13px', color: 'rgba(13,13,23,.7)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {messagePreview()}
+          </div>
+        </div>
+
+        {messageError && (
+          <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+            {messageError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="submit"
+            disabled={savingMessage || messageTooLong}
+            className="btn btn-accent"
+            style={{ fontSize: '13px', padding: '9px 18px', opacity: savingMessage || messageTooLong ? 0.7 : 1 }}
+          >
+            {savingMessage ? 'Salvando...' : 'Salvar mensagem'}
+          </button>
+          <button
+            type="button"
+            onClick={handleRestoreDefaultMessage}
+            disabled={savingMessage}
+            className="btn btn-ghost"
+            style={{ fontSize: '13px', padding: '9px 18px' }}
+          >
+            Restaurar padrão
+          </button>
+          {messageSaved && (
+            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Mensagem salva.</span>
+          )}
+          {messageDirty && !messageSaved && (
+            <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)' }}>Alterações não salvas.</span>
+          )}
+        </div>
+      </form>
+
+      {/* ── Pixel da Meta ─────────────────────────────────────────────────── */}
+      <form onSubmit={handleSavePixel} style={{ background: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+            Pixel da Meta
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(13,13,23,.45)', lineHeight: 1.6, marginTop: '6px' }}>
+            ID do Pixel usado para rastrear visitas e leads nos anúncios da Meta.
+            Deixe em branco para desativar o rastreamento.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Pixel ID
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="field"
+            placeholder="Ex: 1234567890123456"
+            value={pixelForm}
+            onChange={(e) => updatePixelField(e.target.value)}
+          />
+        </div>
+
+        {pixelError && (
+          <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+            {pixelError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="submit"
+            disabled={savingPixel}
+            className="btn btn-accent"
+            style={{ fontSize: '13px', padding: '9px 18px', opacity: savingPixel ? 0.7 : 1 }}
+          >
+            {savingPixel ? 'Salvando...' : 'Salvar Pixel ID'}
+          </button>
+          {pixelSaved && (
+            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Configuração salva.</span>
+          )}
+          {pixelDirty && !pixelSaved && (
+            <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)' }}>Alterações não salvas.</span>
           )}
         </div>
       </form>

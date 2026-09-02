@@ -4,6 +4,8 @@ use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendlySettingController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\MessageSettingController;
+use App\Http\Controllers\PixelSettingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\ReportController;
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes - G4 Business Diagnóstico Comercial
+| API Routes - Diagnóstico Comercial
 |--------------------------------------------------------------------------
 */
 
@@ -35,6 +37,9 @@ Route::get('/report/{report:token}', [ReportController::class, 'show']);
 
 // Link de agendamento do Calendly configurado pelo admin (público, não sensível)
 Route::get('/calendly-settings', [CalendlySettingController::class, 'show']);
+
+// Pixel ID da Meta configurado pelo admin (público, não sensível — consumido pelo <MetaPixel/>)
+Route::get('/pixel-settings', [PixelSettingController::class, 'show']);
 
 // Autenticação admin
 Route::prefix('auth')->group(function () {
@@ -63,6 +68,15 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     // do admin autenticado (ao contrário do link do Calendly).
     Route::get('/ai-settings', [AiSettingController::class, 'index']);
     Route::put('/ai-settings', [AiSettingController::class, 'update']);
+
+    // Integrações — Mensagem do WhatsApp. Sem rota pública: só o backend
+    // consome o template (o texto em si não é exibido ao lead antes do envio).
+    Route::get('/message-settings', [MessageSettingController::class, 'index']);
+    Route::put('/message-settings', [MessageSettingController::class, 'update']);
+
+    // Integrações — Pixel da Meta. Leitura é pública (ver rota acima); só a
+    // escrita exige admin.
+    Route::put('/pixel-settings', [PixelSettingController::class, 'update']);
 
     // Leads
     Route::get('/leads',                    [LeadController::class, 'index']);

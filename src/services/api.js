@@ -257,6 +257,40 @@ export const aiSettingsApi = {
   },
 };
 
+// ── Mensagem do WhatsApp ──────────────────────────────────────────────────────
+
+export const messageSettingsApi = {
+  /** Configuração atual (admin) — vem junto o template padrão, pra placeholder/preview */
+  async getSettings() {
+    return request('/admin/message-settings');
+  },
+
+  /** Salva um template novo (admin). Vazio restaura o padrão (não desativa o envio). */
+  async saveSettings(whatsapp_message_template) {
+    return request('/admin/message-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ whatsapp_message_template }),
+    });
+  },
+};
+
+// ── Pixel da Meta ──────────────────────────────────────────────────────────────
+
+export const pixelSettingsApi = {
+  /** Leitura pública — usada tanto pelo site (<MetaPixel/>) quanto para pré-preencher o admin */
+  async get() {
+    return request('/pixel-settings');
+  },
+
+  /** Salva o Pixel ID (admin). Vazio desativa o pixel no site. */
+  async save(meta_pixel_id) {
+    return request('/admin/pixel-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ meta_pixel_id }),
+    });
+  },
+};
+
 export const adminQuestionsApi = {
   async getAll() {
     return request('/admin/questions');

@@ -38,6 +38,14 @@ class EvolutionProvider implements WhatsAppProviderInterface
                 'text'   => $message,
             ]);
 
+        if (!$response->successful()) {
+            Log::warning('Evolution API: falha ao enviar texto', [
+                'instance' => $this->instance,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+        }
+
         return $response->successful();
     }
 
@@ -52,9 +60,20 @@ class EvolutionProvider implements WhatsAppProviderInterface
                 'mediatype' => 'document',
                 'mimetype'  => 'application/pdf',
                 'caption'   => $caption,
-                'media'     => 'data:application/pdf;base64,' . $base64Pdf,
+                // Base64 puro, sem o prefixo "data:mime;base64," — esta versão
+                // da Evolution API rejeita o data URI com 400 "Owned media
+                // must be a url or base64".
+                'media'     => $base64Pdf,
                 'fileName'  => $filename,
             ]);
+
+        if (!$response->successful()) {
+            Log::warning('Evolution API: falha ao enviar documento', [
+                'instance' => $this->instance,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+        }
 
         return $response->successful();
     }

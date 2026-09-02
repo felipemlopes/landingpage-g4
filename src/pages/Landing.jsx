@@ -5,6 +5,7 @@ import LeadForm from '../components/LeadForm';
 import DiagnosisResult from '../components/DiagnosisResult';
 import Qualify from '../components/Qualify';
 import ThankYou from '../components/ThankYou';
+import MetaPixel from '../components/MetaPixel';
 import { leadsApi, reportApi } from '../services/api';
 
 const VIEWS = { HERO: 'hero', QUIZ: 'quiz', LEAD_FORM: 'lead_form', RESULT: 'result', QUALIFY: 'qualify', THANKYOU: 'thankyou' };
@@ -56,6 +57,9 @@ export default function Landing() {
 
     const { lead, diagnosis: computed } = await leadsApi.submit({ name, phone, email, answers: apiAnswers });
 
+    // Evento padrão "Lead" do Pixel da Meta — silencioso se o pixel não estiver carregado (sem Pixel ID configurado)
+    if (window.fbq) window.fbq('track', 'Lead');
+
     setLeadId(lead.id);
     setLeadName(name);
     setLeadEmail(email);
@@ -103,10 +107,22 @@ export default function Landing() {
     window.scrollTo(0, 0);
   }
 
-  if (view === VIEWS.QUIZ)      return <Quiz onComplete={handleQuizComplete} />;
-  if (view === VIEWS.LEAD_FORM) return <LeadForm onSubmit={handleLeadSubmit} />;
-  if (view === VIEWS.RESULT)    return <DiagnosisResult name={leadName} diagnosis={diagnosis} onContinue={handleResultContinue} />;
-  if (view === VIEWS.QUALIFY)   return <Qualify onComplete={handleQualifyComplete} />;
-  if (view === VIEWS.THANKYOU)  return <ThankYou name={leadName} email={leadEmail} reportResult={reportResult} />;
-  return <Hero onStart={handleStart} />;
+  function renderView() {
+    if (view === VIEWS.QUIZ)      return <Quiz onComplete={handleQuizComplete} />;
+    if (view === VIEWS.LEAD_FORM) return <LeadForm onSubmit={handleLeadSubmit} />;
+    if (view === VIEWS.RESULT)    return <DiagnosisResult name={leadName} diagnosis={diagnosis} onContinue={handleResultContinue} />;
+    if (view === VIEWS.QUALIFY)   return <Qualify onComplete={handleQualifyComplete} />;
+    if (view === VIEWS.THANKYOU)  return <ThankYou name={leadName} email={leadEmail} reportResult={reportResult} />;
+    return <Hero onStart={handleStart} />;
+  }
+
+  // <MetaPixel/> fica fora da troca de `view` — Landing permanece montado
+  // durante toda a navegação Hero→Quiz→...→ThankYou, então o pixel carrega e
+  // dispara PageView uma única vez por visita (Requisito 2.4).
+  return (
+    <>
+      <MetaPixel />
+      {renderView()}
+    </>
+  );
 }
