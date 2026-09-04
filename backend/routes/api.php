@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AiPromptSettingController;
 use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendlySettingController;
+use App\Http\Controllers\HomeContentController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\MessageSettingController;
 use App\Http\Controllers\PixelSettingController;
@@ -41,6 +43,9 @@ Route::get('/calendly-settings', [CalendlySettingController::class, 'show']);
 // Pixel ID da Meta configurado pelo admin (público, não sensível — consumido pelo <MetaPixel/>)
 Route::get('/pixel-settings', [PixelSettingController::class, 'show']);
 
+// Textos da Home (Hero) configurados pelo admin (público, não sensível — já visível no HTML da página)
+Route::get('/home-content', [HomeContentController::class, 'show']);
+
 // Autenticação admin
 Route::prefix('auth')->group(function () {
     Route::post('/login',   [AuthController::class, 'login']);
@@ -56,10 +61,11 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
 
     // Integrações — WhatsApp
-    Route::get('/whatsapp/status',   [WhatsAppController::class, 'status']);
-    Route::post('/whatsapp/connect', [WhatsAppController::class, 'connect']);
-    Route::get('/whatsapp/settings', [WhatsAppController::class, 'settings']);
-    Route::put('/whatsapp/settings', [WhatsAppController::class, 'updateSettings']);
+    Route::get('/whatsapp/status',      [WhatsAppController::class, 'status']);
+    Route::post('/whatsapp/connect',    [WhatsAppController::class, 'connect']);
+    Route::post('/whatsapp/disconnect', [WhatsAppController::class, 'disconnect']);
+    Route::get('/whatsapp/settings',    [WhatsAppController::class, 'settings']);
+    Route::put('/whatsapp/settings',    [WhatsAppController::class, 'updateSettings']);
 
     // Integrações — Calendly
     Route::put('/calendly-settings', [CalendlySettingController::class, 'update']);
@@ -77,6 +83,15 @@ Route::middleware('auth:api')->prefix('admin')->group(function () {
     // Integrações — Pixel da Meta. Leitura é pública (ver rota acima); só a
     // escrita exige admin.
     Route::put('/pixel-settings', [PixelSettingController::class, 'update']);
+
+    // Integrações — Prompt da IA. Sem rota pública: só o backend consome o
+    // template (mesmo raciocínio da mensagem do WhatsApp).
+    Route::get('/ai-prompt-settings', [AiPromptSettingController::class, 'index']);
+    Route::put('/ai-prompt-settings', [AiPromptSettingController::class, 'update']);
+
+    // Conteúdo — Textos da Home. Leitura é pública (ver rota acima); só a
+    // escrita exige admin.
+    Route::put('/home-content', [HomeContentController::class, 'update']);
 
     // Leads
     Route::get('/leads',                    [LeadController::class, 'index']);

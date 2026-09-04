@@ -42,6 +42,20 @@ class WhatsAppController extends Controller
     }
 
     /**
+     * Encerra a conexão/credenciais ativas do provider ativo (admin).
+     */
+    public function disconnect(): JsonResponse
+    {
+        $result = $this->whatsapp->disconnect();
+
+        return response()->json([
+            'provider'     => WhatsappSetting::current()->provider,
+            'disconnected' => $result['disconnected'],
+            'detail'       => $result['detail'],
+        ]);
+    }
+
+    /**
      * Configuração atual (admin). O token da API oficial nunca é devolvido em
      * texto puro — apenas mascarado, para a tela poder mostrar "já configurado".
      */

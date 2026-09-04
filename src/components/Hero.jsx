@@ -1,6 +1,39 @@
+import { useEffect, useState } from 'react';
 import { APP_SHORT_NAME, APP_NAME } from '../config/brand';
+import { homeContentApi } from '../services/api';
+
+// Mesmos valores hoje fixos no componente — usados como estado inicial
+// (primeiro paint idêntico ao atual) e como fallback se a busca falhar.
+const DEFAULT_CONTENT = {
+  badge_text: 'Diagnóstico gratuito · 2 min',
+  headline_line1: 'Diagnóstico gratuito de como estruturar',
+  headline_highlight: 'marketing, comercial e vendas',
+  headline_line3: 'do seu escritório',
+  subheadline:
+    'Descubra em 2 minutos onde está o gargalo que trava o crescimento de seu escritório — e receba um plano personalizado no WhatsApp para parar de depender de indicação.',
+  stat1_value: '9',
+  stat1_label: 'Perguntas',
+  stat2_value: '2min',
+  stat2_label: 'Para concluir',
+  stat3_value: '100%',
+  stat3_label: 'Gratuito',
+  cta_button_text: 'Começar diagnóstico',
+  cta_subtext: 'Sem compromisso · Resultado imediato',
+};
 
 export default function Hero({ onStart }) {
+  const [content, setContent] = useState(DEFAULT_CONTENT);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    homeContentApi.get()
+      .then((data) => { if (!cancelled) setContent(data); })
+      .catch(() => {}); // falha silenciosa — mantém os textos padrão, Home nunca quebra por causa disso
+
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <section
       id="hero"
@@ -83,7 +116,7 @@ export default function Hero({ onStart }) {
               }}
             />
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#A08A4E', letterSpacing: '1.2px', textTransform: 'uppercase' }}>
-              Diagnóstico gratuito · 2 min
+              {content.badge_text}
             </span>
           </div>
 
@@ -98,11 +131,11 @@ export default function Hero({ onStart }) {
               textWrap: 'balance',
             }}
           >
-            Diagnóstico gratuito de como estruturar
+            {content.headline_line1}
             <br />
-            <span style={{ color: '#A08A4E' }}>marketing, comercial e vendas</span>
+            <span style={{ color: '#A08A4E' }}>{content.headline_highlight}</span>
             <br />
-            do seu escritório
+            {content.headline_line3}
           </h1>
 
           <p
@@ -116,7 +149,7 @@ export default function Hero({ onStart }) {
               fontWeight: 300,
             }}
           >
-            Descubra em 2 minutos onde está o gargalo que trava o crescimento de seu escritório — e receba um plano personalizado no WhatsApp para parar de depender de indicação.
+            {content.subheadline}
           </p>
 
           <div
@@ -136,9 +169,9 @@ export default function Hero({ onStart }) {
             }}
           >
             {[
-              { value: '9', label: 'Perguntas' },
-              { value: '2min', label: 'Para concluir' },
-              { value: '100%', label: 'Gratuito' },
+              { value: content.stat1_value, label: content.stat1_label },
+              { value: content.stat2_value, label: content.stat2_label },
+              { value: content.stat3_value, label: content.stat3_label },
             ].map((stat, i) => (
               <div
                 key={stat.label}
@@ -168,13 +201,13 @@ export default function Hero({ onStart }) {
 
           <div className="fu fu-4">
             <button onClick={onStart} className="cta-btn" style={{ maxWidth: '340px', margin: '0 auto', fontSize: '17px' }}>
-              Começar diagnóstico
+              {content.cta_button_text}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
             <p style={{ marginTop: '14px', fontSize: '12px', color: 'rgba(255,255,255,.25)' }}>
-              Sem compromisso · Resultado imediato
+              {content.cta_subtext}
             </p>
           </div>
         </div>

@@ -114,6 +114,22 @@ class OfficialCloudApiProvider implements WhatsAppProviderInterface
         return $this->connectionStatus() + ['qrCode' => null];
     }
 
+    public function disconnect(): array
+    {
+        // Não existe "sessão" na API oficial — é um token de longa duração.
+        // Desconectar aqui significa apagar as credenciais salvas.
+        $settings = WhatsappSetting::current();
+        $settings->cloud_token           = null;
+        $settings->cloud_phone_number_id = null;
+        $settings->cloud_waba_id         = null;
+        $settings->save();
+
+        return [
+            'disconnected' => true,
+            'detail'       => 'Credenciais removidas. Configure o Access Token e o Phone Number ID novamente para reconectar.',
+        ];
+    }
+
     private function uploadMedia(string $base64Pdf, string $filename): ?string
     {
         $binary = base64_decode($base64Pdf);

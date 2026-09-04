@@ -7,6 +7,7 @@ import LeadsPanel from './LeadsPanel';
 import QuestionsPanel from './QuestionsPanel';
 import ProfilePanel from './ProfilePanel';
 import IntegracoesPanel from './IntegracoesPanel';
+import ConteudoPanel from './ConteudoPanel';
 import { auth } from '../../services/api';
 
 export default function AdminPanel() {
@@ -61,6 +62,7 @@ export default function AdminPanel() {
 
   function renderPanel() {
     if (tab === 'perguntas')    return <QuestionsPanel />;
+    if (tab === 'conteudo')     return <ConteudoPanel />;
     if (tab === 'integracoes')  return <IntegracoesPanel />;
     if (tab === 'perfil')       return <ProfilePanel user={user} onUpdate={setUser} />;
     return <LeadsPanel />;

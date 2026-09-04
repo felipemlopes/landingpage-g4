@@ -21,18 +21,18 @@
     padding: 32px 40px 28px;
     color: #fff;
   }
-  .header-brand {
+  .header-title {
     font-size: 22px;
     font-weight: 700;
     color: #A08A4E;
     letter-spacing: -0.5px;
     margin-bottom: 4px;
+    text-transform: uppercase;
   }
   .header-subtitle {
     font-size: 12px;
     color: rgba(255,255,255,.5);
     letter-spacing: 1px;
-    text-transform: uppercase;
   }
   .header-divider {
     height: 1px;
@@ -66,6 +66,12 @@
     font-size: 9px;
     color: rgba(255,255,255,.4);
     margin-top: 2px;
+  }
+  .header-name {
+    font-size: 12px;
+    color: rgba(255,255,255,.5);
+    letter-spacing: 1px;
+    margin-top: 4px;
   }
   .score-info h2 {
     font-size: 18px;
@@ -175,7 +181,6 @@
     align-items: center;
     justify-content: space-between;
   }
-  .footer-brand { font-size: 11px; font-weight: 700; color: #A08A4E; }
   .footer-text  { font-size: 10px; color: #9ca3af; }
   .footer-date  { font-size: 10px; color: #9ca3af; }
 </style>
@@ -184,8 +189,9 @@
 
 <!-- Cabeçalho -->
 <div class="header">
-  <div class="header-brand">{{ config('app.name') }}</div>
-  <div class="header-subtitle">Diagnóstico Comercial · Relatório Personalizado</div>
+  <div class="header-title">Diagnóstico Comercial</div>
+  <div class="header-subtitle">Estruturação de Marketing, Comercial e Vendas</div>
+  <div class="header-name">Lucas Fonseca - Marketing e vendas.</div>
   <div class="header-divider"></div>
   <div class="header-score-row">
     <div class="score-circle">
@@ -226,7 +232,6 @@
 
 <!-- Rodapé -->
 <div class="footer">
-  <div class="footer-brand">{{ config('app.name') }}</div>
   <div class="footer-text">Diagnóstico Comercial Personalizado</div>
   <div class="footer-date">{{ $date }}</div>
 </div>

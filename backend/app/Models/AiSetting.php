@@ -8,6 +8,7 @@ class AiSetting extends Model
 {
     protected $fillable = [
         'openai_api_key',
+        'openai_model',
     ];
 
     /**

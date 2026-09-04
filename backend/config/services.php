@@ -36,8 +36,13 @@ return [
     ],
 
     'openai' => [
-        'key'   => env('OPENAI_API_KEY'),
-        'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        // Nomes prefixados com G4_ de propósito: "OPENAI_API_KEY"/"OPENAI_MODEL"
+        // colidem com variáveis de ambiente globais (nível Windows User) de
+        // outra ferramenta de IA nesta máquina — env vars de sistema têm
+        // prioridade sobre o .env, então os nomes genéricos silenciosamente
+        // pisavam na key/modelo deste projeto. Ver .env.example.
+        'key'   => env('G4_OPENAI_API_KEY'),
+        'model' => env('G4_OPENAI_MODEL', 'gpt-4o-mini'),
     ],
 
     'ai' => [

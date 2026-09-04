@@ -85,7 +85,7 @@ export default function ThankYou({ name, email, reportResult }) {
         {showPdfFallback && (
           <button
             type="button"
-            onClick={() => reportApi.download(reportResult.pdf, reportResult.filename || 'diagnostico-g4.pdf')}
+            onClick={() => reportApi.download(reportResult.pdf, reportResult.filename || 'diagnostico-comercial.pdf')}
             style={{
               display: 'block',
               margin: '10px auto 0',

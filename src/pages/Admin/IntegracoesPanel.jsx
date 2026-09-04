@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { aiSettingsApi, calendlySettingsApi, messageSettingsApi, pixelSettingsApi, whatsappApi } from '../../services/api';
+import { aiPromptSettingsApi, aiSettingsApi, calendlySettingsApi, messageSettingsApi, pixelSettingsApi, whatsappApi } from '../../services/api';
+import { APP_NAME } from '../../config/brand';
+import ConfirmModal from './ConfirmModal';
 
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLLS = 30; // ~2 minutos
@@ -18,6 +20,12 @@ function templateOrDefault(data) {
   return data?.whatsapp_message_template || data?.whatsapp_message_default || '';
 }
 
+// Mesmo raciocínio do template da mensagem do WhatsApp: sempre mostra algo
+// editável (padrão ou customizado), nunca um placeholder fantasma.
+function promptOrDefault(data) {
+  return data?.prompt_template || data?.prompt_default || '';
+}
+
 export default function IntegracoesPanel() {
   const [loading, setLoading]       = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -25,7 +33,9 @@ export default function IntegracoesPanel() {
   const [qrCode, setQrCode]         = useState(null);
   const [error, setError]           = useState('');
 
-  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showConnectModal, setShowConnectModal]       = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [disconnecting, setDisconnecting]             = useState(false);
 
   const [settings, setSettings]         = useState(null); // últimos dados salvos (vindos da API)
   const [form, setForm]                 = useState(emptyForm);
@@ -44,6 +54,12 @@ export default function IntegracoesPanel() {
   const [savingAi, setSavingAi]     = useState(false);
   const [aiSaved, setAiSaved]       = useState(false);
   const [aiError, setAiError]       = useState('');
+
+  const [promptSettings, setPromptSettings] = useState(null); // { prompt_template, prompt_default }
+  const [promptForm, setPromptForm]         = useState('');
+  const [savingPrompt, setSavingPrompt]     = useState(false);
+  const [promptSaved, setPromptSaved]       = useState(false);
+  const [promptError, setPromptError]       = useState('');
 
   const [messageSettings, setMessageSettings] = useState(null); // { whatsapp_message_template, whatsapp_message_default }
   const [messageForm, setMessageForm]         = useState('');
@@ -70,11 +86,12 @@ export default function IntegracoesPanel() {
     setLoading(true);
     setError('');
     try {
-      const [statusData, settingsData, calendlyData, aiData, messageData, pixelData] = await Promise.all([
+      const [statusData, settingsData, calendlyData, aiData, promptData, messageData, pixelData] = await Promise.all([
         whatsappApi.status(),
         whatsappApi.getSettings(),
         calendlySettingsApi.get(),
         aiSettingsApi.getSettings(),
+        aiPromptSettingsApi.getSettings(),
         messageSettingsApi.getSettings(),
         pixelSettingsApi.get(),
       ]);
@@ -83,6 +100,8 @@ export default function IntegracoesPanel() {
       setCalendlyUrl(calendlyData.url || '');
       setCalendlyForm(calendlyData.url || '');
       setAiSettings(aiData);
+      setPromptSettings(promptData);
+      setPromptForm(promptOrDefault(promptData));
       setMessageSettings(messageData);
       setMessageForm(templateOrDefault(messageData));
       setPixelId(pixelData.meta_pixel_id || '');
@@ -164,6 +183,26 @@ export default function IntegracoesPanel() {
     stopPolling();
   }
 
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    setError('');
+    try {
+      await whatsappApi.disconnect();
+      await loadStatus();
+      // API oficial: desconectar apaga as credenciais salvas — recarrega o
+      // formulário para os campos voltarem a "não configurado".
+      if (form.provider === 'official') {
+        const settingsData = await whatsappApi.getSettings();
+        applySettings(settingsData);
+      }
+      setShowDisconnectModal(false);
+    } catch (err) {
+      setError(err.message || 'Erro ao desconectar.');
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setSettingsSaved(false);
@@ -231,6 +270,55 @@ export default function IntegracoesPanel() {
     } finally {
       setSavingAi(false);
     }
+  }
+
+  function updatePromptField(value) {
+    setPromptForm(value);
+    setPromptSaved(false);
+  }
+
+  async function handleSavePrompt(e) {
+    e.preventDefault();
+    if (promptForm.length > 6000) return;
+    setSavingPrompt(true);
+    setPromptError('');
+    setPromptSaved(false);
+    try {
+      const data = await aiPromptSettingsApi.saveSettings(promptForm);
+      setPromptSettings(data);
+      setPromptForm(promptOrDefault(data));
+      setPromptSaved(true);
+    } catch (err) {
+      setPromptError(err.message || 'Erro ao salvar o prompt.');
+    } finally {
+      setSavingPrompt(false);
+    }
+  }
+
+  async function handleRestoreDefaultPrompt() {
+    setSavingPrompt(true);
+    setPromptError('');
+    setPromptSaved(false);
+    try {
+      const data = await aiPromptSettingsApi.saveSettings('');
+      setPromptSettings(data);
+      setPromptForm(promptOrDefault(data));
+      setPromptSaved(true);
+    } catch (err) {
+      setPromptError(err.message || 'Erro ao restaurar o padrão.');
+    } finally {
+      setSavingPrompt(false);
+    }
+  }
+
+  function promptPreview() {
+    const template = promptForm || promptSettings?.prompt_default || '';
+    return template
+      .split('{nome}').join('João Silva')
+      .split('{pontuacao}').join('82')
+      .split('{nivel}').join('Em Transição')
+      .split('{respostas}').join('- Geração de Demanda: Dependo muito de indicação (25 pts)\n- Estrutura Comercial: Tenho um processo, mas não é seguido sempre (50 pts)')
+      .split('{marca}').join(APP_NAME);
   }
 
   function updateMessageField(value) {
@@ -318,10 +406,12 @@ export default function IntegracoesPanel() {
     form.cloud_waba_id !== (settings.cloud_waba_id || '') ||
     !!form.cloud_token
   );
-  const calendlyDirty = calendlyForm !== calendlyUrl;
-  const messageDirty  = messageForm !== templateOrDefault(messageSettings);
+  const calendlyDirty  = calendlyForm !== calendlyUrl;
+  const promptDirty    = promptForm !== promptOrDefault(promptSettings);
+  const promptTooLong  = promptForm.length > 6000;
+  const messageDirty   = messageForm !== templateOrDefault(messageSettings);
   const messageTooLong = messageForm.length > 4096;
-  const pixelDirty    = pixelForm !== pixelId;
+  const pixelDirty     = pixelForm !== pixelId;
 
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -479,6 +569,16 @@ export default function IntegracoesPanel() {
           <button type="button" onClick={loadStatus} className="btn btn-ghost" style={{ fontSize: '14px', padding: '10px 22px' }}>
             Atualizar status
           </button>
+          {status?.connected && (
+            <button
+              type="button"
+              onClick={() => setShowDisconnectModal(true)}
+              className="btn btn-danger"
+              style={{ fontSize: '14px', padding: '10px 22px' }}
+            >
+              Desconectar
+            </button>
+          )}
         </div>
       </div>
 
@@ -580,6 +680,82 @@ export default function IntegracoesPanel() {
           </button>
           {aiSaved && (
             <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Configuração salva.</span>
+          )}
+        </div>
+      </form>
+
+      {/* ── Prompt da IA ──────────────────────────────────────────────────── */}
+      <form onSubmit={handleSavePrompt} style={{ background: '#fff', border: '1px solid rgba(0,0,0,.08)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#A08A4E' }}>
+            Prompt da IA
+          </div>
+          <p style={{ fontSize: '12px', color: 'rgba(13,13,23,.45)', lineHeight: 1.6, marginTop: '6px' }}>
+            Instruções enviadas à IA para gerar o relatório de diagnóstico. O
+            campo abaixo já vem preenchido com o prompt padrão — edite à
+            vontade. Use <code>{'{nome}'}</code>, <code>{'{pontuacao}'}</code>,{' '}
+            <code>{'{nivel}'}</code>, <code>{'{respostas}'}</code> e{' '}
+            <code>{'{marca}'}</code> para personalizar.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Template do prompt
+          </label>
+          <textarea
+            className="field"
+            rows={16}
+            placeholder={promptSettings?.prompt_default}
+            value={promptForm}
+            onChange={(e) => updatePromptField(e.target.value)}
+            style={{ resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6, width: '100%' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: promptTooLong ? '#dc2626' : 'rgba(13,13,23,.35)' }}>
+              {promptForm.length} / 6000
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '.8px', textTransform: 'uppercase', color: 'rgba(160,138,78,.8)', marginBottom: '8px' }}>
+            Preview (valores de exemplo)
+          </label>
+          <div style={{ background: 'rgba(160,138,78,.06)', border: '1px solid rgba(160,138,78,.15)', borderRadius: '8px', padding: '14px 16px', fontSize: '13px', color: 'rgba(13,13,23,.7)', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: '220px', overflowY: 'auto' }}>
+            {promptPreview()}
+          </div>
+        </div>
+
+        {promptError && (
+          <div style={{ background: 'rgba(220,38,38,.06)', border: '1px solid rgba(220,38,38,.2)', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', color: '#dc2626' }}>
+            {promptError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="submit"
+            disabled={savingPrompt || promptTooLong}
+            className="btn btn-accent"
+            style={{ fontSize: '13px', padding: '9px 18px', opacity: savingPrompt || promptTooLong ? 0.7 : 1 }}
+          >
+            {savingPrompt ? 'Salvando...' : 'Salvar prompt'}
+          </button>
+          <button
+            type="button"
+            onClick={handleRestoreDefaultPrompt}
+            disabled={savingPrompt}
+            className="btn btn-ghost"
+            style={{ fontSize: '13px', padding: '9px 18px' }}
+          >
+            Restaurar padrão
+          </button>
+          {promptSaved && (
+            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Prompt salvo.</span>
+          )}
+          {promptDirty && !promptSaved && (
+            <span style={{ fontSize: '12px', color: 'rgba(13,13,23,.4)' }}>Alterações não salvas.</span>
           )}
         </div>
       </form>
@@ -708,6 +884,21 @@ export default function IntegracoesPanel() {
           )}
         </div>
       </form>
+
+      {/* ── Modal: confirmar desconexão ─────────────────────────────────── */}
+      {showDisconnectModal && (
+        <ConfirmModal
+          title="Desconectar o WhatsApp?"
+          message={
+            isEvolution
+              ? 'Isso encerra a sessão pareada. Você vai precisar escanear um novo QR Code para reconectar.'
+              : 'Isso remove o Access Token e o Phone Number ID salvos. Você vai precisar configurá-los novamente para reconectar.'
+          }
+          confirmLabel={disconnecting ? 'Desconectando...' : 'Desconectar'}
+          onConfirm={handleDisconnect}
+          onClose={() => !disconnecting && setShowDisconnectModal(false)}
+        />
+      )}
 
       {/* ── Modal: criar instância / escanear QR Code ────────────────────── */}
       {showConnectModal && (

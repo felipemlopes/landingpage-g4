@@ -6,7 +6,7 @@ use App\Models\MessageSetting;
 use App\Services\AI\AIReportProviderInterface;
 use App\Services\WhatsApp\WhatsAppProviderInterface;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Monta o conteúdo do diagnóstico (IA + PDF) e cuida do envio via WhatsApp.
@@ -55,6 +55,12 @@ class DiagnosticReportService
         try {
             $html = $this->ai->generateReport($data);
         } catch (\Exception $e) {
+            // Antes esse erro era engolido em silêncio — sem log nenhum, só o
+            // texto padrão saía no PDF, sem pista de que a IA tinha falhado.
+            Log::warning('Geração de relatório via IA falhou, usando fallback', [
+                'provider' => $aiProvider,
+                'error'    => $e->getMessage(),
+            ]);
             $html       = $this->fallbackReport($data);
             $aiProvider = 'fallback';
         }
@@ -74,7 +80,11 @@ class DiagnosticReportService
         return [
             'aiProvider' => $aiProvider,
             'pdfContent' => $pdf->output(),
-            'filename'   => 'diagnostico-' . Str::slug(config('app.name')) . '-' . now()->format('Y-m-d') . '.pdf',
+            // Sufixo por lead (não só por data) — evita que dois leads que
+            // baixem/recebam o PDF no mesmo dia fiquem com o mesmo nome de
+            // arquivo. `lead_id` normalmente vem preenchido (Landing.jsx
+            // sempre envia); no raro caso de faltar, cai pro timestamp.
+            'filename'   => 'diagnostico-comercial-' . ($data['lead_id'] ?? now()->timestamp) . '.pdf',
             'level'      => $level,
         ];
     }

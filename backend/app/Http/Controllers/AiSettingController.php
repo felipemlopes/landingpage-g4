@@ -23,6 +23,10 @@ class AiSettingController extends Controller
      * salvo — não existe fluxo de "desconfigurar" (ver Requisito 1.3 de
      * .kiro/specs/openai-key-configuravel-admin), já que ficar sem key
      * quebra a geração do relatório de diagnóstico.
+     *
+     * O modelo (openai_model) NÃO é editável por aqui de propósito — é um
+     * valor fixo/interno (vive só no banco, semeado pela migração), não uma
+     * configuração exposta ao admin.
      */
     public function update(Request $request): JsonResponse
     {

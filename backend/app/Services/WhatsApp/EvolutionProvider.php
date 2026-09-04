@@ -193,6 +193,40 @@ class EvolutionProvider implements WhatsAppProviderInterface
         }
     }
 
+    public function disconnect(): array
+    {
+        if (!$this->enabled) {
+            return ['disconnected' => false, 'detail' => 'Evolution API não configurada.'];
+        }
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders(['apikey' => $this->apiKey])
+                ->delete("{$this->url}/instance/logout/{$this->instance}");
+
+            // 404 = instância não existe (nunca conectada) — já está "desconectado".
+            if ($response->status() === 404 || $response->successful()) {
+                return [
+                    'disconnected' => true,
+                    'detail'       => 'WhatsApp desconectado. Clique em "Conectar" para parear um novo número.',
+                ];
+            }
+
+            Log::warning('Evolution API: falha ao desconectar instância', [
+                'instance' => $this->instance,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+
+            return [
+                'disconnected' => false,
+                'detail'       => 'Não foi possível desconectar: ' . ($response->json('message') ?? 'erro desconhecido'),
+            ];
+        } catch (\Throwable $e) {
+            return ['disconnected' => false, 'detail' => 'Erro ao desconectar: ' . $e->getMessage()];
+        }
+    }
+
     /**
      * Cria a instância na Evolution API. Retorna o QR Code (base64) já embutido
      * na resposta da criação, quando disponível, ou null caso precise ser

@@ -16,8 +16,12 @@ class OpenAIService implements AIReportProviderInterface
     {
         // Fonte primária: banco (configurável pelo admin em Integrações).
         // Fallback: .env — cobre instalação nova ou linha ainda não semeada.
-        $this->apiKey = AiSetting::current()->openai_api_key ?: config('services.openai.key');
-        $this->model  = config('services.openai.model', 'gpt-4o-mini');
+        // Nunca lido só do .env em runtime: variável de ambiente do sistema
+        // pode colidir e pisar silenciosamente no valor do projeto (já
+        // aconteceu — ver .env.example).
+        $settings     = AiSetting::current();
+        $this->apiKey = $settings->openai_api_key ?: config('services.openai.key');
+        $this->model  = $settings->openai_model ?: config('services.openai.model', 'gpt-4o-mini');
     }
 
     /**

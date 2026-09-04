@@ -2,8 +2,43 @@
 
 namespace App\Services\AI;
 
+use App\Models\AiPromptSetting;
+
 trait PromptBuilder
 {
+    /**
+     * Template padrão do prompt — usado quando o admin nunca configurou (ou
+     * limpou) um template customizado em Integrações. Suporta as variáveis
+     * {nome}, {pontuacao}, {nivel}, {respostas} e {marca}.
+     */
+    public const DEFAULT_PROMPT_TEMPLATE = <<<PROMPT
+Você é um especialista em estratégia comercial da {marca}.
+Gere um relatório de diagnóstico comercial PERSONALIZADO e PROFISSIONAL em português brasileiro para a empresa do lead abaixo.
+
+DADOS DO LEAD:
+- Nome: {nome}
+- Score geral: {pontuacao}/100
+- Nível de maturidade: {nivel}
+
+RESPOSTAS DO DIAGNÓSTICO:
+{respostas}
+
+INSTRUÇÕES:
+- Escreva em HTML simples (use apenas: h1, h2, h3, p, ul, li, strong, em, div com class)
+- Use as classes: "section", "highlight", "warning", "success", "tip"
+- Seja ESPECÍFICO e cite as respostas do lead
+- Estrutura obrigatória:
+  1. Saudação personalizada com o nome
+  2. Resumo do diagnóstico (score e nível)
+  3. Pontos fortes identificados (baseado nas respostas com maior pontuação)
+  4. Principais gargalos (baseado nas respostas com menor pontuação)
+  5. Plano de ação: 3 recomendações práticas e específicas
+  6. Próximos passos com a {marca}
+- Tom: profissional, direto, motivador
+- NÃO inclua <!DOCTYPE>, <html>, <head>, <body> ou estilos CSS inline
+- Máximo 600 palavras
+PROMPT;
+
     private function buildPrompt(array $data): string
     {
         $name      = $data['name'];
@@ -32,34 +67,16 @@ trait PromptBuilder
             $answersText .= "- {$q['category']}: {$selectedOption} ({$pts} pts)\n";
         }
 
-        $brand = config('app.name');
+        // Fonte primária: banco (configurável pelo admin em Integrações).
+        // Fallback: o template padrão embutido acima.
+        $template = AiPromptSetting::current()->prompt_template ?: self::DEFAULT_PROMPT_TEMPLATE;
 
-        return <<<PROMPT
-Você é um especialista em estratégia comercial da {$brand}.
-Gere um relatório de diagnóstico comercial PERSONALIZADO e PROFISSIONAL em português brasileiro para a empresa do lead abaixo.
-
-DADOS DO LEAD:
-- Nome: {$name}
-- Score geral: {$score}/100
-- Nível de maturidade: {$level}
-
-RESPOSTAS DO DIAGNÓSTICO:
-{$answersText}
-
-INSTRUÇÕES:
-- Escreva em HTML simples (use apenas: h1, h2, h3, p, ul, li, strong, em, div com class)
-- Use as classes: "section", "highlight", "warning", "success", "tip"
-- Seja ESPECÍFICO e cite as respostas do lead
-- Estrutura obrigatória:
-  1. Saudação personalizada com o nome
-  2. Resumo do diagnóstico (score e nível)
-  3. Pontos fortes identificados (baseado nas respostas com maior pontuação)
-  4. Principais gargalos (baseado nas respostas com menor pontuação)
-  5. Plano de ação: 3 recomendações práticas e específicas
-  6. Próximos passos com a {$brand}
-- Tom: profissional, direto, motivador
-- NÃO inclua <!DOCTYPE>, <html>, <head>, <body> ou estilos CSS inline
-- Máximo 600 palavras
-PROMPT;
+        return strtr($template, [
+            '{nome}'      => $name,
+            '{pontuacao}' => (string) $score,
+            '{nivel}'     => $level,
+            '{respostas}' => $answersText,
+            '{marca}'     => config('app.name'),
+        ]);
     }
 }

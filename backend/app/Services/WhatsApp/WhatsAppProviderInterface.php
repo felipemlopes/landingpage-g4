@@ -28,4 +28,12 @@ interface WhatsAppProviderInterface
      * ['connected' => bool, 'detail' => string, 'qrCode' => ?string]
      */
     public function connect(): array;
+
+    /**
+     * Encerra a conexão/credenciais ativas.
+     * Evolution: logout da instância (mantém a instância criada, exige novo QR).
+     * API oficial: apaga o token e os IDs salvos.
+     * ['disconnected' => bool, 'detail' => string]
+     */
+    public function disconnect(): array;
 }

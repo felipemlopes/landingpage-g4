@@ -209,6 +209,11 @@ export const whatsappApi = {
     return request('/admin/whatsapp/connect', { method: 'POST' });
   },
 
+  /** Desconecta o WhatsApp (logout na Evolution, ou apaga credenciais na API oficial) */
+  async disconnect() {
+    return request('/admin/whatsapp/disconnect', { method: 'POST' });
+  },
+
   /** Configuração atual: provider ativo + credenciais da API oficial (token mascarado) */
   async getSettings() {
     return request('/admin/whatsapp/settings');
@@ -257,6 +262,23 @@ export const aiSettingsApi = {
   },
 };
 
+// ── Prompt da IA ─────────────────────────────────────────────────────────────
+
+export const aiPromptSettingsApi = {
+  /** Configuração atual (admin) — vem junto o template padrão, pra placeholder/preview */
+  async getSettings() {
+    return request('/admin/ai-prompt-settings');
+  },
+
+  /** Salva um template novo (admin). Vazio restaura o padrão (não desativa a geração). */
+  async saveSettings(prompt_template) {
+    return request('/admin/ai-prompt-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ prompt_template }),
+    });
+  },
+};
+
 // ── Mensagem do WhatsApp ──────────────────────────────────────────────────────
 
 export const messageSettingsApi = {
@@ -287,6 +309,23 @@ export const pixelSettingsApi = {
     return request('/admin/pixel-settings', {
       method: 'PUT',
       body: JSON.stringify({ meta_pixel_id }),
+    });
+  },
+};
+
+// ── Conteúdo da Home ─────────────────────────────────────────────────────────
+
+export const homeContentApi = {
+  /** Leitura pública — usada tanto pelo site (<Hero/>) quanto para pré-preencher o admin */
+  async get() {
+    return request('/home-content');
+  },
+
+  /** Salva os textos (admin). Campo vazio/ausente naquele campo restaura o padrão dele. */
+  async save(payload) {
+    return request('/admin/home-content', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     });
   },
 };
