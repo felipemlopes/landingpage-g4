@@ -5,7 +5,7 @@ import LeadForm from '../components/LeadForm';
 import DiagnosisResult from '../components/DiagnosisResult';
 import Qualify from '../components/Qualify';
 import ThankYou from '../components/ThankYou';
-import MetaPixel from '../components/MetaPixel';
+import MetaPixel, { pixelReady } from '../components/MetaPixel';
 import { leadsApi, reportApi } from '../services/api';
 
 const VIEWS = { HERO: 'hero', QUIZ: 'quiz', LEAD_FORM: 'lead_form', RESULT: 'result', QUALIFY: 'qualify', THANKYOU: 'thankyou' };
@@ -57,7 +57,10 @@ export default function Landing() {
 
     const { lead, diagnosis: computed } = await leadsApi.submit({ name, phone, email, answers: apiAnswers });
 
-    // Evento padrão "Lead" do Pixel da Meta — silencioso se o pixel não estiver carregado (sem Pixel ID configurado)
+    // Evento padrão "Lead" do Pixel da Meta — silencioso se o pixel não estiver carregado (sem Pixel ID configurado).
+    // Espera o bootstrap do fbq terminar (teto de 2s) antes de checar `window.fbq`, pra não perder o evento se o
+    // fetch de /pixel-settings ainda estiver em andamento (ver comentário em MetaPixel.jsx).
+    await Promise.race([pixelReady, new Promise((resolve) => setTimeout(resolve, 2000))]);
     if (window.fbq) window.fbq('track', 'Lead');
 
     setLeadId(lead.id);

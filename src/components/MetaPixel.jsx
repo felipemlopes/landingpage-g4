@@ -2,6 +2,18 @@ import { useEffect } from 'react';
 import { pixelSettingsApi } from '../services/api';
 
 /**
+ * Resolve quando a tentativa de bootstrap do Pixel termina — com sucesso,
+ * falha ou pixel desativado. Existe pra quem dispara eventos depois do
+ * PageView (ex.: `handleLeadSubmit` em Landing.jsx) poder esperar o `fbq`
+ * ficar pronto em vez de só checar `window.fbq` na hora, o que perdia o
+ * evento em silêncio se esse fetch ainda estivesse em andamento (rede lenta,
+ * cold start do backend) — bug real reportado pelo cliente (Lead sumindo
+ * mesmo com PageView disparando normalmente).
+ */
+let resolvePixelReady;
+export const pixelReady = new Promise((resolve) => { resolvePixelReady = resolve; });
+
+/**
  * Injeta o Pixel da Meta (client-side) quando um Pixel ID está configurado
  * pelo admin. Sem UI própria — só efeito colateral. Deve ser renderizado
  * apenas em telas públicas do funil (nunca em /admin/*), ver Requisito 2.6
@@ -39,7 +51,8 @@ export default function MetaPixel() {
       })
       .catch(() => {
         // Falha silenciosa — Requisito 2.7: nunca quebra a Home por causa do pixel.
-      });
+      })
+      .finally(() => resolvePixelReady());
 
     return () => {
       cancelled = true;
